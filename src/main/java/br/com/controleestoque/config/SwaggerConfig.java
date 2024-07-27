@@ -10,8 +10,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@SecurityRequirement(name = "bearerAuth")
-@SecurityScheme(name = "bearerAuth", type = SecuritySchemeType.HTTP, scheme = "bearer", bearerFormat = "JWT")
 public class SwaggerConfig {
 
     @Bean
@@ -21,11 +19,11 @@ public class SwaggerConfig {
                         .title("Controle de Estoque")
                         .version("v1")
                         .description("API para Controle de Estoque")
-                        .termsOfService("https://github.com/RafaelGabriel325")
+                        .termsOfService("https://github.com/")
                         .license(
                                 new License()
                                         .name("Apache 2.0")
-                                        .url("https://github.com/RafaelGabriel325")
+                                        .url("https://github.com/")
                         ));
     }
 }
