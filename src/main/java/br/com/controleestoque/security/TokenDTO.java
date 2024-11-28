@@ -5,11 +5,11 @@ import lombok.*;
 import java.io.Serializable;
 import java.util.Date;
 
-@Data
+@Setter
+@Getter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@EqualsAndHashCode
 public class TokenDTO implements Serializable {
     private String username;
     private Boolean authenticated;

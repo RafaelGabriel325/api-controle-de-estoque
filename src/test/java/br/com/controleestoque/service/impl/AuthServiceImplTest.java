@@ -1,7 +1,5 @@
 package br.com.controleestoque.service.impl;
 
-import br.com.controleestoque.model.dto.PermissionDTO;
-import br.com.controleestoque.model.dto.UserDTO;
 import br.com.controleestoque.model.entity.Permission;
 import br.com.controleestoque.model.entity.User;
 import br.com.controleestoque.repository.UserRepository;
@@ -26,6 +24,14 @@ import static org.mockito.Mockito.when;
 
 class AuthServiceImplTest {
 
+    private static final UUID USER_UUID = UUID.randomUUID();
+    private static final String USERNAME = "rafal325";
+    private static final String PASSWORD = "rafael123";
+    private static final String ACCESS_TOKEN = "testAccessToken";
+    private static final String REFRESH_TOKEN = "testRefreshToken";
+    private static final String VALID_REFRESH_TOKEN = "validRefreshToken";
+    private static final String NON_EXISTENT_USERNAME = "nonexistentUser";
+
     @Mock
     private JwtTokenProvider jwtTokenProvider;
 
@@ -40,90 +46,64 @@ class AuthServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.initMocks(this);
+        MockitoAnnotations.openMocks(this);
     }
 
     @Test
     void testSignInValidCredentials() {
-        UUID userUuid = UUID.randomUUID();
-        UserDTO userDTO = createUserDTO(userUuid);
-        User userEntity = createUserEntity(userUuid);
-        AccountCredentialsDTO accountCredentialsDTO = new AccountCredentialsDTO(userDTO.getUsername(), userDTO.getPassword());
+        User userEntity = createUserEntity();
+        AccountCredentialsDTO accountCredentialsDTO = new AccountCredentialsDTO(USERNAME, PASSWORD);
 
-        when(userRepository.findByUsername(userDTO.getUsername())).thenReturn(userEntity);
-        when(passwordEncoder.matches(accountCredentialsDTO.getPassword(), userEntity.getPassword())).thenReturn(true);
-        when(jwtTokenProvider.createAccessToken(userDTO.getUsername(), userEntity.getPermissions())).thenReturn(createTokenDTO());
+        when(userRepository.findByUsername(USERNAME)).thenReturn(userEntity);
+        when(passwordEncoder.matches(PASSWORD, userEntity.getPassword())).thenReturn(true);
+        when(jwtTokenProvider.createAccessToken(USERNAME, userEntity.getPermissions())).thenReturn(createTokenDTO());
 
         TokenDTO result = authService.signIn(accountCredentialsDTO);
 
         assertNotNull(result);
-        assertEquals("testAccessToken", result.getAccessToken());
-        assertEquals("testRefreshToken", result.getRefreshToken());
+        assertEquals(ACCESS_TOKEN, result.getAccessToken());
+        assertEquals(REFRESH_TOKEN, result.getRefreshToken());
     }
 
     @Test
     void testSignInInvalidCredentials() {
-        UUID userUuid = UUID.randomUUID();
-        UserDTO userDTO = createUserDTO(userUuid);
-        User userEntity = createUserEntity(userUuid);
+        User userEntity = createUserEntity();
+        AccountCredentialsDTO accountCredentialsDTO = new AccountCredentialsDTO(USERNAME, PASSWORD);
 
-        AccountCredentialsDTO accountCredentialsDTO = new AccountCredentialsDTO(userDTO.getUsername(), userDTO.getPassword());
-
-        when(userRepository.findByUsername(userDTO.getUsername())).thenReturn(userEntity);
-        when(passwordEncoder.matches(accountCredentialsDTO.getPassword(), userEntity.getPassword())).thenReturn(false);
+        when(userRepository.findByUsername(USERNAME)).thenReturn(userEntity);
+        when(passwordEncoder.matches(PASSWORD, userEntity.getPassword())).thenReturn(false);
 
         assertThrows(BadCredentialsException.class, () -> authService.signIn(accountCredentialsDTO));
     }
 
-
     @Test
     void testRefreshTokenValidUser() {
-        UUID userUuid = UUID.randomUUID();
-        User userEntity = createUserEntity(userUuid);
-        String refreshToken = "validRefreshToken";
+        User userEntity = createUserEntity();
 
-        when(userRepository.findByUsername(userEntity.getUsername())).thenReturn(userEntity);
-        when(jwtTokenProvider.createRefreshToken(refreshToken)).thenReturn(createTokenDTO());
+        when(userRepository.findByUsername(USERNAME)).thenReturn(userEntity);
+        when(jwtTokenProvider.createRefreshToken(VALID_REFRESH_TOKEN)).thenReturn(createTokenDTO());
 
-        TokenDTO result = authService.refreshToken(userEntity.getUsername(), refreshToken);
+        TokenDTO result = authService.refreshToken(USERNAME, VALID_REFRESH_TOKEN);
 
         assertNotNull(result);
-        assertEquals("testAccessToken", result.getAccessToken());
-        assertEquals("testRefreshToken", result.getRefreshToken());
+        assertEquals(ACCESS_TOKEN, result.getAccessToken());
+        assertEquals(REFRESH_TOKEN, result.getRefreshToken());
     }
 
     @Test
     void testRefreshTokenInvalidUser() {
-        String nonExistentUsername = "nonexistentUser";
-        String refreshToken = "validRefreshToken";
+        when(userRepository.findByUsername(NON_EXISTENT_USERNAME)).thenReturn(null);
 
-        when(userRepository.findByUsername(nonExistentUsername)).thenReturn(null);
-
-        assertThrows(UsernameNotFoundException.class, () -> authService.refreshToken(nonExistentUsername, refreshToken));
+        assertThrows(UsernameNotFoundException.class, () -> authService.refreshToken(NON_EXISTENT_USERNAME, VALID_REFRESH_TOKEN));
     }
 
-    private UserDTO createUserDTO(UUID uuid) {
-        List<PermissionDTO> permissionDTOList = createPermissionDTOList();
-        return UserDTO.builder()
-                .uuid(uuid)
-                .username("rafal325")
-                .fullName("Rafael Gabriel")
-                .password("rafael123")
-                .accountNonExpired(true)
-                .accountNonLocked(true)
-                .credentialsNonExpired(true)
-                .enable(true)
-                .permissions(permissionDTOList)
-                .build();
-    }
-
-    private User createUserEntity(UUID uuid) {
+    private User createUserEntity() {
         List<Permission> permissionList = createPermissionList();
         return User.builder()
-                .uuid(uuid)
-                .username("rafal325")
+                .uuid(USER_UUID)
+                .username(USERNAME)
                 .fullName("Rafael Gabriel")
-                .password("rafael123")
+                .password(PASSWORD)
                 .accountNonExpired(true)
                 .accountNonLocked(true)
                 .credentialsNonExpired(true)
@@ -139,17 +119,10 @@ class AuthServiceImplTest {
         return permissions;
     }
 
-    private List<PermissionDTO> createPermissionDTOList() {
-        List<PermissionDTO> permissions = new ArrayList<>();
-        permissions.add(PermissionDTO.builder().uuid(UUID.randomUUID()).description("ADM").build());
-        permissions.add(PermissionDTO.builder().uuid(UUID.randomUUID()).description("TESTER").build());
-        return permissions;
-    }
-
-    private TokenDTO createTokenDTO(){
+    private TokenDTO createTokenDTO() {
         return TokenDTO.builder()
-                .accessToken("testAccessToken")
-                .refreshToken("testRefreshToken")
+                .accessToken(ACCESS_TOKEN)
+                .refreshToken(REFRESH_TOKEN)
                 .build();
     }
 }

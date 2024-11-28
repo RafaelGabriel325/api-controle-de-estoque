@@ -10,12 +10,21 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class PessoaServiceImplTest {
+
+    private static final UUID PESSOA_ID = UUID.randomUUID();
+    private static final String NOME = "Rafael";
+    private static final String SOBRENOME = "Gabriel";
 
     @Mock
     private PessoaRepository pessoaRepository;
@@ -30,45 +39,39 @@ class PessoaServiceImplTest {
 
     @Test
     void testFindByIdSuccess() {
-        UUID pessoaId = UUID.randomUUID();
-        Pessoa pessoaEntity = createPessoaEntity(pessoaId);
+        Pessoa pessoaEntity = createPessoaEntity(PESSOA_ID);
 
-        when(pessoaRepository.findById(pessoaEntity.getUuid())).thenReturn(Optional.of(pessoaEntity));
+        when(pessoaRepository.findById(PESSOA_ID)).thenReturn(Optional.of(pessoaEntity));
 
-        PessoaDTO result = pessoaServiceImpl.findById(pessoaId);
+        PessoaDTO result = pessoaServiceImpl.findById(PESSOA_ID);
 
         assertNotNull(result);
-        assertEquals(pessoaEntity.getUuid(), result.getUuid());
-        assertEquals(pessoaEntity.getNome(), result.getNome());
-        assertEquals(pessoaEntity.getSobrenome(), result.getSobrenome());
+        assertEquals(PESSOA_ID, result.getUuid());
+        assertEquals(NOME, result.getNome());
+        assertEquals(SOBRENOME, result.getSobrenome());
     }
 
     @Test
     void testFindByIdNotFound() {
-        UUID pessoaId = UUID.randomUUID();
-        when(pessoaRepository.findById(pessoaId)).thenReturn(Optional.empty());
+        when(pessoaRepository.findById(PESSOA_ID)).thenReturn(Optional.empty());
 
-        assertThrows(PessoaException.class, () -> pessoaServiceImpl.findById(pessoaId));
+        assertThrows(PessoaException.class, () -> pessoaServiceImpl.findById(PESSOA_ID));
     }
 
     @Test
     void testFindAllSuccess() {
-        List<Pessoa> pessoaList = new ArrayList<>();
-
-        UUID pessoaId = UUID.randomUUID();
-        Pessoa pessoaEntity = createPessoaEntity(pessoaId);
-
-        pessoaList.add(pessoaEntity);
+        Pessoa pessoaEntity = createPessoaEntity(PESSOA_ID);
+        List<Pessoa> pessoaList = Collections.singletonList(pessoaEntity);
 
         when(pessoaRepository.findAll()).thenReturn(pessoaList);
 
         List<PessoaDTO> result = pessoaServiceImpl.findAll();
 
         assertNotNull(result);
-        assertEquals(pessoaList.get(0).getUuid(), result.get(0).getUuid());
-        assertEquals(pessoaList.get(0).getNome(), result.get(0).getNome());
-        assertEquals(pessoaList.get(0).getSobrenome(), result.get(0).getSobrenome());
-        assertEquals(pessoaList.size(), result.size());
+        assertEquals(1, result.size());
+        assertEquals(PESSOA_ID, result.get(0).getUuid());
+        assertEquals(NOME, result.get(0).getNome());
+        assertEquals(SOBRENOME, result.get(0).getSobrenome());
     }
 
     @Test
@@ -83,80 +86,73 @@ class PessoaServiceImplTest {
 
     @Test
     void testCreateSuccess() {
-        PessoaDTO pessoaDTO = createPessoaDTO(UUID.randomUUID());
-        Pessoa pessoaEntity = createPessoaEntity(pessoaDTO.getUuid());
+        PessoaDTO pessoaDTO = createPessoaDTO(PESSOA_ID);
+        Pessoa pessoaEntity = createPessoaEntity(PESSOA_ID);
 
         when(pessoaRepository.save(any(Pessoa.class))).thenReturn(pessoaEntity);
 
         PessoaDTO result = pessoaServiceImpl.create(pessoaDTO);
 
         assertNotNull(result);
-        assertNotNull(result.getUuid());
-        assertEquals(pessoaDTO.getNome(), result.getNome());
-        assertEquals(pessoaDTO.getSobrenome(), result.getSobrenome());
+        assertEquals(PESSOA_ID, result.getUuid());
+        assertEquals(NOME, result.getNome());
+        assertEquals(SOBRENOME, result.getSobrenome());
     }
 
     @Test
-    public void testUpdatePessoaSucces() {
-        UUID id = UUID.randomUUID();
+    void testUpdateSuccess() {
+        PessoaDTO pessoaDTO = createPessoaDTO(PESSOA_ID);
+        Pessoa pessoaEntity = createPessoaEntity(PESSOA_ID);
 
-        PessoaDTO pessoaDTO = createPessoaDTO(id);
-        Pessoa pessoaEntity = createPessoaEntity(id);
+        when(pessoaRepository.findById(PESSOA_ID)).thenReturn(Optional.of(pessoaEntity));
 
-        when(pessoaRepository.findById(pessoaEntity.getUuid())).thenReturn(Optional.of(pessoaEntity));
-        when(pessoaRepository.save(any(Pessoa.class))).thenReturn(pessoaEntity);
+        pessoaServiceImpl.update(PESSOA_ID, pessoaDTO);
 
-        pessoaServiceImpl.update(id, pessoaDTO);
-
-        assertEquals(pessoaDTO.getNome(), pessoaEntity.getNome());
-        assertEquals(pessoaDTO.getSobrenome(), pessoaEntity.getSobrenome());
+        verify(pessoaRepository).save(pessoaEntity);
+        assertEquals(NOME, pessoaEntity.getNome());
+        assertEquals(SOBRENOME, pessoaEntity.getSobrenome());
     }
 
     @Test
     void testUpdateNotFound() {
-        UUID pessoaId = UUID.randomUUID();
+        PessoaDTO pessoaDTO = createPessoaDTO(PESSOA_ID);
 
-        PessoaDTO pessoaDTO = createPessoaDTO(pessoaId);
+        when(pessoaRepository.findById(PESSOA_ID)).thenReturn(Optional.empty());
 
-        when(pessoaRepository.findById(pessoaId)).thenReturn(Optional.empty());
-
-        assertThrows(PessoaException.class, () -> pessoaServiceImpl.update(pessoaId, pessoaDTO));
+        assertThrows(PessoaException.class, () -> pessoaServiceImpl.update(PESSOA_ID, pessoaDTO));
     }
 
     @Test
     void testDeleteSuccess() {
-        UUID pessoaId = UUID.randomUUID();
-        PessoaDTO pessoaDTO = createPessoaDTO(pessoaId);
-        Pessoa pessoaEntity = createPessoaEntity(pessoaId);
+        Pessoa pessoaEntity = createPessoaEntity(PESSOA_ID);
 
-        when(pessoaRepository.findById(pessoaEntity.getUuid())).thenReturn(Optional.of(pessoaEntity));
+        when(pessoaRepository.findById(PESSOA_ID)).thenReturn(Optional.of(pessoaEntity));
 
-        pessoaServiceImpl.delete(pessoaDTO.getUuid());
+        pessoaServiceImpl.delete(PESSOA_ID);
 
         verify(pessoaRepository).delete(pessoaEntity);
     }
 
     @Test
     void testDeleteNotFound() {
-        UUID pessoaId = UUID.randomUUID();
-        when(pessoaRepository.findById(pessoaId)).thenReturn(Optional.empty());
+        when(pessoaRepository.findById(PESSOA_ID)).thenReturn(Optional.empty());
 
-        assertThrows(PessoaException.class, () -> pessoaServiceImpl.delete(pessoaId));
+        assertThrows(PessoaException.class, () -> pessoaServiceImpl.delete(PESSOA_ID));
     }
 
     private PessoaDTO createPessoaDTO(UUID uuid) {
         return PessoaDTO.builder()
                 .uuid(uuid)
-                .nome("Rafael")
-                .sobrenome("Gabriel")
+                .nome(NOME)
+                .sobrenome(SOBRENOME)
                 .build();
     }
 
     private Pessoa createPessoaEntity(UUID uuid) {
         return Pessoa.builder()
                 .uuid(uuid)
-                .nome("Rafael")
-                .sobrenome("Gabriel")
+                .nome(NOME)
+                .sobrenome(SOBRENOME)
                 .build();
     }
 }

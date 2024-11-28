@@ -4,11 +4,11 @@ import lombok.*;
 
 import java.io.Serializable;
 
-@Data
+@Setter
+@Getter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@EqualsAndHashCode
 public class AccountCredentialsDTO implements Serializable {
     private String username;
     private String password;

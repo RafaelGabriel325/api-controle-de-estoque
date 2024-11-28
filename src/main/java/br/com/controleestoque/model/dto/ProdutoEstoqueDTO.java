@@ -10,11 +10,11 @@ import org.springframework.hateoas.RepresentationModel;
 import java.time.LocalDate;
 import java.util.UUID;
 
-@Data
+@Setter
+@Getter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@EqualsAndHashCode
 public class ProdutoEstoqueDTO extends RepresentationModel<ProdutoEstoqueDTO> {
     private UUID uuid;
     @NotBlank
@@ -31,4 +31,5 @@ public class ProdutoEstoqueDTO extends RepresentationModel<ProdutoEstoqueDTO> {
     private TipoProduto tipoProduto;
     @NotBlank
     private Pessoa pessoa;
+
 }

@@ -18,46 +18,43 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
-    private final Logger LOGGER = LoggerFactory.getLogger(PessoaServiceImpl.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthServiceImpl.class);
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
     public TokenDTO signIn(AccountCredentialsDTO accountCredentialsDTO) {
-        try {
-            LOGGER.info("Request sign in");
-            String username = accountCredentialsDTO.getUsername();
-            String password = accountCredentialsDTO.getPassword();
+        LOGGER.info("Signing in user: {}", accountCredentialsDTO.getUsername());
 
-            User user = this.userRepository.findByUsername(username);
+        User user = userRepository.findByUsername(accountCredentialsDTO.getUsername());
+        if (user == null) {
+            logAndThrowUsernameNotFound(accountCredentialsDTO.getUsername());
+        }
 
-            if (user != null) {
-                if (passwordEncoder.matches(password, user.getPassword())) {
-                    return this.jwtTokenProvider.createAccessToken(username, user.getPermissions());
-                } else {
-                    throw new BadCredentialsException("Invalid username/password supplied!");
-                }
-            } else {
-                throw new UsernameNotFoundException("Username: " + username + " not found");
-            }
-
-        } catch (BadCredentialsException | UsernameNotFoundException exception) {
-            LOGGER.error("Error during sign in", exception);
+        if (user != null && !passwordEncoder.matches(accountCredentialsDTO.getPassword(), user.getPassword())) {
+            LOGGER.error("Invalid password for username: {}", accountCredentialsDTO.getUsername());
             throw new BadCredentialsException("Invalid username/password supplied!");
         }
+
+        assert user != null;
+        return jwtTokenProvider.createAccessToken(user.getUsername(), user.getPermissions());
     }
 
     @Override
     public TokenDTO refreshToken(String username, String refreshToken) {
-        LOGGER.info("Request refresh token");
+        LOGGER.info("Refreshing token for user: {}", username);
 
-        User user = this.userRepository.findByUsername(username);
-
-        if (user != null) {
-            return this.jwtTokenProvider.createRefreshToken(refreshToken);
-        } else {
-            throw new UsernameNotFoundException("Username: " + username + " not found");
+        User user = userRepository.findByUsername(username);
+        if (user == null) {
+            logAndThrowUsernameNotFound(username);
         }
+
+        return jwtTokenProvider.createRefreshToken(refreshToken);
+    }
+
+    private void logAndThrowUsernameNotFound(String username) {
+        LOGGER.error("Username: {} not found", username);
+        throw new UsernameNotFoundException("Username: " + username + " not found");
     }
 }

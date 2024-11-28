@@ -25,73 +25,76 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserDetailsService, UserService {
-    private final Logger LOGGER = LoggerFactory.getLogger(UserServiceImpl.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(UserServiceImpl.class);
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private static final UserMapper mapper = UserMapper.INSTANCE;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        LOGGER.info("Finding one User by name " + username + "!");
+        LOGGER.info("Finding user by username: {}", username);
         UserDetails userDetails = userRepository.findByUsername(username);
         if (userDetails != null) {
             return userDetails;
         } else {
+            LOGGER.error("Username {} not found", username);
             throw new UsernameNotFoundException("Username" + username + " not found");
         }
     }
 
     @Override
     public UserDTO findById(UUID id) {
-        LOGGER.info("Finding a User by id");
-        User userEntity = this.userRepository
-                .findById(id)
-                .orElseThrow(() -> new UserException("User not found with ID: " + id));
-        UserDTO userDTO = UserMapper.INSTANCE.entityToDto(userEntity);
-        userDTO.add(linkTo(methodOn(UserController.class).findById(id)).withSelfRel());
-        return userDTO;
+        LOGGER.info("Finding User by ID: {}", id);
+        User userEntity = findUserById(id);
+        return addHateoasLinks(mapper.entityToDto(userEntity));
     }
 
     @Override
     public List<UserDTO> findAll() {
-        LOGGER.info("Finding all User");
-        List<UserDTO> userDTOList = this.userRepository
-                .findAll()
+        LOGGER.info("Finding all Users");
+        return userRepository.findAll()
                 .stream()
-                .map(UserMapper.INSTANCE::entityToDto)
+                .map(mapper::entityToDto)
+                .map(this::addHateoasLinks)
                 .toList();
-        userDTOList.forEach(user -> user.add(linkTo(methodOn(UserController.class).findById(user.getUuid())).withSelfRel()));
-        return userDTOList;
     }
 
     @Override
     public UserDTO create(UserDTO userDTO) {
-        LOGGER.info("Creating a User");
-        User userEntity = UserMapper.INSTANCE.dtoToEntity(userDTO);
+        LOGGER.info("Creating a new User");
+        User userEntity = mapper.dtoToEntity(userDTO);
         userEntity.setPassword(passwordEncoder.encode(userDTO.getPassword()));
-        this.userRepository.save(userEntity);
-        UserDTO createdUserDTO = UserMapper.INSTANCE.entityToDto(userEntity);
-        createdUserDTO.add(linkTo(methodOn(UserController.class).findById(createdUserDTO.getUuid())).withSelfRel());
-        return createdUserDTO;
+        userRepository.save(userEntity);
+        return addHateoasLinks(mapper.entityToDto(userEntity));
     }
 
     @Override
     public void update(UUID id, UserDTO userDTO) {
-        LOGGER.info("Updating a User");
-        User userEntity = this.userRepository
-                .findById(id)
-                .orElseThrow(() -> new UserException("User not found with ID: " + id));
+        LOGGER.info("Updating User with ID: {}", id);
+        User userEntity = findUserById(id);
         userEntity.setUsername(userDTO.getUsername());
-        userEntity.setFullName(userEntity.getFullName());
+        userEntity.setFullName(userDTO.getFullName());
         userEntity.setPassword(passwordEncoder.encode(userDTO.getPassword()));
         userRepository.save(userEntity);
     }
 
     @Override
     public void delete(UUID id) {
-        LOGGER.info("Deleting a User");
-        User userEntity = this.userRepository
-                .findById(id)
-                .orElseThrow(() -> new UserException("User not found with ID: " + id));
-        this.userRepository.delete(userEntity);
+        LOGGER.info("Deleting User with ID: {}", id);
+        User userEntity = findUserById(id);
+        userRepository.delete(userEntity);
+    }
+
+    private User findUserById(UUID id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> {
+                    LOGGER.error("User not found with ID: {}", id);
+                    return new UserException("User not found with ID: " + id);
+                });
+    }
+
+    private UserDTO addHateoasLinks(UserDTO userDTO) {
+        userDTO.add(linkTo(methodOn(UserController.class).findById(userDTO.getUuid())).withSelfRel());
+        return userDTO;
     }
 }

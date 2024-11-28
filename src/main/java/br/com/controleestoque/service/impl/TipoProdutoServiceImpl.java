@@ -21,54 +21,59 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 @Service
 @RequiredArgsConstructor
 public class TipoProdutoServiceImpl implements TipoProdutoService {
-    private final Logger LOGGER = LoggerFactory.getLogger(TipoProdutoServiceImpl.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(TipoProdutoServiceImpl.class);
     private final TipoProdutoRepository tipoProdutoRepository;
+    private static final TipoProdutoMapper mapper = TipoProdutoMapper.INSTANCE;
 
     @Override
     public TipoProdutoDTO findById(UUID id) {
-        LOGGER.info("Finding a Tipo Produto by id");
-        TipoProduto tipoProdutoEntity = this.tipoProdutoRepository
-                .findById(id)
-                .orElseThrow(() -> new TipoProdutoException("Gender not found with ID: " + id));
-        TipoProdutoDTO tipoProdutoDTO = TipoProdutoMapper.INSTANCE.entityToDto(tipoProdutoEntity);
-        tipoProdutoDTO.add(linkTo(methodOn(TipoProdutoController.class).findById(id)).withSelfRel());
-        return tipoProdutoDTO;
+        LOGGER.info("Finding Tipo Produto by ID: {}", id);
+        TipoProduto tipoProdutoEntity = findTipoProdutoById(id);
+        return addHateoasLinks(mapper.entityToDto(tipoProdutoEntity));
     }
 
     @Override
     public List<TipoProdutoDTO> findAll() {
-        LOGGER.info("Finding all Tipo Produto");
-        List<TipoProdutoDTO> tipoProdutoDTOList = this.tipoProdutoRepository.findAll().stream().map(TipoProdutoMapper.INSTANCE::entityToDto).toList();
-        tipoProdutoDTOList.forEach(tipoProduto -> tipoProduto.add(linkTo(methodOn(TipoProdutoController.class).findById(tipoProduto.getUuid())).withSelfRel()));
-        return tipoProdutoDTOList;
+        LOGGER.info("Finding all Tipo Produtos");
+        return tipoProdutoRepository.findAll().stream()
+                .map(mapper::entityToDto)
+                .map(this::addHateoasLinks)
+                .toList();
     }
 
     @Override
     public TipoProdutoDTO create(TipoProdutoDTO tipoProdutoDTO) {
-        LOGGER.info("Creating a Tipo Produto");
-        TipoProduto tipoProdutoEntity = TipoProdutoMapper.INSTANCE.dtoToEntity(tipoProdutoDTO);
-        this.tipoProdutoRepository.save(tipoProdutoEntity);
-        TipoProdutoDTO createdTipoProdutoDTO = TipoProdutoMapper.INSTANCE.entityToDto(tipoProdutoEntity);
-        createdTipoProdutoDTO.add(linkTo(methodOn(TipoProdutoController.class).findById(createdTipoProdutoDTO.getUuid())).withSelfRel());
-        return createdTipoProdutoDTO;
+        LOGGER.info("Creating a new Tipo Produto");
+        TipoProduto tipoProdutoEntity = mapper.dtoToEntity(tipoProdutoDTO);
+        tipoProdutoRepository.save(tipoProdutoEntity);
+        return addHateoasLinks(mapper.entityToDto(tipoProdutoEntity));
     }
 
     @Override
     public void update(UUID id, TipoProdutoDTO tipoProdutoDTO) {
-        LOGGER.info("Updating a Tipo Produto");
-        TipoProduto tipoProdutoEntity = this.tipoProdutoRepository
-                .findById(id)
-                .orElseThrow(() -> new TipoProdutoException("Tipo Produto not found with ID: " + id));
+        LOGGER.info("Updating Tipo Produto with ID: {}", id);
+        TipoProduto tipoProdutoEntity = findTipoProdutoById(id);
         tipoProdutoEntity.setNome(tipoProdutoDTO.getNome());
         tipoProdutoRepository.save(tipoProdutoEntity);
     }
 
     @Override
     public void delete(UUID id) {
-        LOGGER.info("Deleting a Tipo Produto");
-        TipoProduto tipoProdutoEntity = this.tipoProdutoRepository
-                .findById(id)
-                .orElseThrow(() -> new TipoProdutoException("Tipo Produto not found with ID: " + id));
-        this.tipoProdutoRepository.delete(tipoProdutoEntity);
+        LOGGER.info("Deleting Tipo Produto with ID: {}", id);
+        TipoProduto tipoProdutoEntity = findTipoProdutoById(id);
+        tipoProdutoRepository.delete(tipoProdutoEntity);
+    }
+
+    private TipoProduto findTipoProdutoById(UUID id) {
+        return tipoProdutoRepository.findById(id)
+                .orElseThrow(() -> {
+                    LOGGER.error("Tipo Produto not found with ID: {}", id);
+                    return new TipoProdutoException("Tipo Produto not found with ID: " + id);
+                });
+    }
+
+    private TipoProdutoDTO addHateoasLinks(TipoProdutoDTO tipoProdutoDTO) {
+        tipoProdutoDTO.add(linkTo(methodOn(TipoProdutoController.class).findById(tipoProdutoDTO.getUuid())).withSelfRel());
+        return tipoProdutoDTO;
     }
 }

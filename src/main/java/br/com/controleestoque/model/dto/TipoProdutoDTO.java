@@ -7,11 +7,11 @@ import org.springframework.hateoas.RepresentationModel;
 
 import java.util.UUID;
 
-@Data
+@Setter
+@Getter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@EqualsAndHashCode
 public class TipoProdutoDTO extends RepresentationModel<TipoProdutoDTO> {
     private UUID uuid;
     @NotBlank

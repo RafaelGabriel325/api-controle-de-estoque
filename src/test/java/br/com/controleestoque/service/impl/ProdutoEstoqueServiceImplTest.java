@@ -5,7 +5,6 @@ import br.com.controleestoque.model.dto.ProdutoEstoqueDTO;
 import br.com.controleestoque.model.entity.Pessoa;
 import br.com.controleestoque.model.entity.ProdutoEstoque;
 import br.com.controleestoque.model.entity.TipoProduto;
-import br.com.controleestoque.model.mapper.ProdutoEstoqueMapper;
 import br.com.controleestoque.repository.PessoaRepository;
 import br.com.controleestoque.repository.ProdutoEstoqueRepository;
 import br.com.controleestoque.repository.TipoProdutoRepository;
@@ -22,9 +21,19 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class ProdutoEstoqueServiceImplTest {
+
+    private static final UUID PRODUTO_ESTOQUE_ID = UUID.randomUUID();
+    private static final UUID PESSOA_ID = UUID.randomUUID();
+    private static final UUID TIPO_PRODUTO_ID = UUID.randomUUID();
+    private static final String MARCA = "Melitta";
+    private static final int QUANTIDADE_PACOTE = 2;
+    private static final String TAMANHO_PACOTE = "500g";
+    private static final LocalDate DATA_ENTREGA = LocalDate.now();
 
     @Mock
     private ProdutoEstoqueRepository produtoEstoqueRepository;
@@ -45,41 +54,38 @@ class ProdutoEstoqueServiceImplTest {
 
     @Test
     void testFindByIdSuccess() {
-        UUID produtoEstoqueId = UUID.randomUUID();
-        ProdutoEstoqueDTO produtoEstoqueDTO = createProdutoEstoqueDTO(produtoEstoqueId);
-        ProdutoEstoque produtoEstoqueEntity = ProdutoEstoqueMapper.INSTANCE.dtoToEntity(produtoEstoqueDTO);
+        ProdutoEstoque produtoEstoqueEntity = createProdutoEstoqueEntity(PRODUTO_ESTOQUE_ID);
 
-        when(produtoEstoqueRepository.findById(produtoEstoqueId)).thenReturn(Optional.of(produtoEstoqueEntity));
+        when(produtoEstoqueRepository.findById(PRODUTO_ESTOQUE_ID)).thenReturn(Optional.of(produtoEstoqueEntity));
 
-        ProdutoEstoqueDTO result = produtoEstoqueServiceImpl.findById(produtoEstoqueId);
+        ProdutoEstoqueDTO result = produtoEstoqueServiceImpl.findById(PRODUTO_ESTOQUE_ID);
 
         assertNotNull(result);
-        assertEquals(produtoEstoqueEntity.getUuid(), result.getUuid());
-        assertEquals(produtoEstoqueEntity.getMarca(), result.getMarca());
-        assertEquals(produtoEstoqueEntity.getQuantidadePacote(), result.getQuantidadePacote());
+        assertEquals(PRODUTO_ESTOQUE_ID, result.getUuid());
+        assertEquals(MARCA, result.getMarca());
+        assertEquals(QUANTIDADE_PACOTE, result.getQuantidadePacote());
     }
 
     @Test
     void testFindByIdNotFound() {
-        UUID produtoEstoqueId = UUID.randomUUID();
-        when(produtoEstoqueRepository.findById(produtoEstoqueId)).thenReturn(Optional.empty());
+        when(produtoEstoqueRepository.findById(PRODUTO_ESTOQUE_ID)).thenReturn(Optional.empty());
 
-        assertThrows(ProdutoEstoqueException.class, () -> produtoEstoqueServiceImpl.findById(produtoEstoqueId));
+        assertThrows(ProdutoEstoqueException.class, () -> produtoEstoqueServiceImpl.findById(PRODUTO_ESTOQUE_ID));
     }
 
     @Test
     void testFindAllSuccess() {
-        List<ProdutoEstoque> produtoEstoqueList = Collections.singletonList(createProdutoEstoqueEntity(UUID.randomUUID()));
+        List<ProdutoEstoque> produtoEstoqueList = Collections.singletonList(createProdutoEstoqueEntity(PRODUTO_ESTOQUE_ID));
 
         when(produtoEstoqueRepository.findAll()).thenReturn(produtoEstoqueList);
 
         List<ProdutoEstoqueDTO> result = produtoEstoqueServiceImpl.findAll();
 
         assertNotNull(result);
-        assertEquals(produtoEstoqueList.size(), result.size());
-        assertEquals(produtoEstoqueList.get(0).getUuid(), result.get(0).getUuid());
-        assertEquals(produtoEstoqueList.get(0).getMarca(), result.get(0).getMarca());
-        assertEquals(produtoEstoqueList.get(0).getQuantidadePacote(), result.get(0).getQuantidadePacote());
+        assertEquals(1, result.size());
+        assertEquals(PRODUTO_ESTOQUE_ID, result.get(0).getUuid());
+        assertEquals(MARCA, result.get(0).getMarca());
+        assertEquals(QUANTIDADE_PACOTE, result.get(0).getQuantidadePacote());
     }
 
     @Test
@@ -94,92 +100,93 @@ class ProdutoEstoqueServiceImplTest {
 
     @Test
     void testCreateSuccess() {
-        ProdutoEstoqueDTO produtoEstoqueDTO = createProdutoEstoqueDTO(UUID.randomUUID());
-        ProdutoEstoque produtoEstoqueEntity = ProdutoEstoqueMapper.INSTANCE.dtoToEntity(produtoEstoqueDTO);
+        ProdutoEstoqueDTO produtoEstoqueDTO = createProdutoEstoqueDTO(PRODUTO_ESTOQUE_ID);
+        ProdutoEstoque produtoEstoqueEntity = createProdutoEstoqueEntity(PRODUTO_ESTOQUE_ID);
 
-        Pessoa pessoaEntity = createPessoaEntity(UUID.randomUUID());
-        when(pessoaRepository.findById(produtoEstoqueDTO.getPessoa().getUuid())).thenReturn(Optional.of(pessoaEntity));
+        Pessoa pessoaEntity = createPessoaEntity(PESSOA_ID);
+        when(pessoaRepository.findById(PESSOA_ID)).thenReturn(Optional.of(pessoaEntity));
 
-        TipoProduto tipoProdutoEntity = createTipoProdutoEntity(UUID.randomUUID());
-        when(tipoProdutoRepository.findById(produtoEstoqueDTO.getTipoProduto().getUuid())).thenReturn(Optional.of(tipoProdutoEntity));
+        TipoProduto tipoProdutoEntity = createTipoProdutoEntity(TIPO_PRODUTO_ID);
+        when(tipoProdutoRepository.findById(TIPO_PRODUTO_ID)).thenReturn(Optional.of(tipoProdutoEntity));
 
         when(produtoEstoqueRepository.save(any(ProdutoEstoque.class))).thenReturn(produtoEstoqueEntity);
 
         ProdutoEstoqueDTO result = produtoEstoqueServiceImpl.create(produtoEstoqueDTO);
 
         assertNotNull(result);
-        assertNotNull(result.getUuid());
-        assertEquals(produtoEstoqueDTO.getMarca(), result.getMarca());
-        assertEquals(produtoEstoqueDTO.getQuantidadePacote(), result.getQuantidadePacote());
+        assertEquals(PRODUTO_ESTOQUE_ID, result.getUuid());
+        assertEquals(MARCA, result.getMarca());
+        assertEquals(QUANTIDADE_PACOTE, result.getQuantidadePacote());
     }
 
     @Test
     void testUpdateProdutoEstoqueSuccess() {
-        UUID produtoEstoqueId = UUID.randomUUID();
-        ProdutoEstoqueDTO produtoEstoqueDTO = createProdutoEstoqueDTO(produtoEstoqueId);
-        ProdutoEstoque produtoEstoqueEntity = ProdutoEstoqueMapper.INSTANCE.dtoToEntity(produtoEstoqueDTO);
+        ProdutoEstoqueDTO produtoEstoqueDTO = createProdutoEstoqueDTO(PRODUTO_ESTOQUE_ID);
+        ProdutoEstoque produtoEstoqueEntity = createProdutoEstoqueEntity(PRODUTO_ESTOQUE_ID);
 
-        when(produtoEstoqueRepository.findById(produtoEstoqueEntity.getUuid())).thenReturn(Optional.of(produtoEstoqueEntity));
-        when(produtoEstoqueRepository.save(any(ProdutoEstoque.class))).thenReturn(produtoEstoqueEntity);
+        when(produtoEstoqueRepository.findById(PRODUTO_ESTOQUE_ID)).thenReturn(Optional.of(produtoEstoqueEntity));
 
-        produtoEstoqueServiceImpl.update(produtoEstoqueId, produtoEstoqueDTO);
+        Pessoa pessoaEntity = createPessoaEntity(PESSOA_ID);
+        when(pessoaRepository.findById(PESSOA_ID)).thenReturn(Optional.of(pessoaEntity));
 
-        assertEquals(produtoEstoqueDTO.getMarca(), produtoEstoqueEntity.getMarca());
-        assertEquals(produtoEstoqueDTO.getQuantidadePacote(), produtoEstoqueEntity.getQuantidadePacote());
+        TipoProduto tipoProdutoEntity = createTipoProdutoEntity(TIPO_PRODUTO_ID);
+        when(tipoProdutoRepository.findById(TIPO_PRODUTO_ID)).thenReturn(Optional.of(tipoProdutoEntity));
+
+        produtoEstoqueServiceImpl.update(PRODUTO_ESTOQUE_ID, produtoEstoqueDTO);
+
+        verify(produtoEstoqueRepository).save(produtoEstoqueEntity);
+        assertEquals(MARCA, produtoEstoqueEntity.getMarca());
+        assertEquals(QUANTIDADE_PACOTE, produtoEstoqueEntity.getQuantidadePacote());
     }
 
     @Test
     void testUpdateNotFound() {
-        UUID produtoEstoqueId = UUID.randomUUID();
-        ProdutoEstoqueDTO produtoEstoqueDTO = createProdutoEstoqueDTO(produtoEstoqueId);
+        ProdutoEstoqueDTO produtoEstoqueDTO = createProdutoEstoqueDTO(PRODUTO_ESTOQUE_ID);
 
-        when(produtoEstoqueRepository.findById(produtoEstoqueId)).thenReturn(Optional.empty());
+        when(produtoEstoqueRepository.findById(PRODUTO_ESTOQUE_ID)).thenReturn(Optional.empty());
 
-        assertThrows(ProdutoEstoqueException.class, () -> produtoEstoqueServiceImpl.update(produtoEstoqueId, produtoEstoqueDTO));
+        assertThrows(ProdutoEstoqueException.class, () -> produtoEstoqueServiceImpl.update(PRODUTO_ESTOQUE_ID, produtoEstoqueDTO));
     }
 
     @Test
     void testDeleteSuccess() {
-        UUID produtoEstoqueId = UUID.randomUUID();
-        ProdutoEstoqueDTO produtoEstoqueDTO = createProdutoEstoqueDTO(produtoEstoqueId);
-        ProdutoEstoque produtoEstoqueEntity = ProdutoEstoqueMapper.INSTANCE.dtoToEntity(produtoEstoqueDTO);
+        ProdutoEstoque produtoEstoqueEntity = createProdutoEstoqueEntity(PRODUTO_ESTOQUE_ID);
 
-        when(produtoEstoqueRepository.findById(produtoEstoqueEntity.getUuid())).thenReturn(Optional.of(produtoEstoqueEntity));
+        when(produtoEstoqueRepository.findById(PRODUTO_ESTOQUE_ID)).thenReturn(Optional.of(produtoEstoqueEntity));
 
-        produtoEstoqueServiceImpl.delete(produtoEstoqueDTO.getUuid());
+        produtoEstoqueServiceImpl.delete(PRODUTO_ESTOQUE_ID);
 
         verify(produtoEstoqueRepository).delete(produtoEstoqueEntity);
     }
 
     @Test
     void testDeleteNotFound() {
-        UUID produtoEstoqueId = UUID.randomUUID();
-        when(produtoEstoqueRepository.findById(produtoEstoqueId)).thenReturn(Optional.empty());
+        when(produtoEstoqueRepository.findById(PRODUTO_ESTOQUE_ID)).thenReturn(Optional.empty());
 
-        assertThrows(ProdutoEstoqueException.class, () -> produtoEstoqueServiceImpl.delete(produtoEstoqueId));
+        assertThrows(ProdutoEstoqueException.class, () -> produtoEstoqueServiceImpl.delete(PRODUTO_ESTOQUE_ID));
     }
 
     private ProdutoEstoqueDTO createProdutoEstoqueDTO(UUID uuid) {
         return ProdutoEstoqueDTO.builder()
                 .uuid(uuid)
-                .marca("Melitta")
-                .quantidadePacote(2)
-                .dataEntrega(LocalDate.now())
-                .tamanhoPacote("500g")
-                .pessoa(createPessoaEntity(UUID.randomUUID()))
-                .tipoProduto(createTipoProdutoEntity(UUID.randomUUID()))
+                .marca(MARCA)
+                .quantidadePacote(QUANTIDADE_PACOTE)
+                .dataEntrega(DATA_ENTREGA)
+                .tamanhoPacote(TAMANHO_PACOTE)
+                .pessoa(createPessoaDTO(PESSOA_ID))
+                .tipoProduto(createTipoProdutoDTO(TIPO_PRODUTO_ID))
                 .build();
     }
 
     private ProdutoEstoque createProdutoEstoqueEntity(UUID uuid) {
         return ProdutoEstoque.builder()
                 .uuid(uuid)
-                .marca("Melitta")
-                .quantidadePacote(2)
-                .dataEntrega(LocalDate.now())
-                .tamanhoPacote("500g")
-                .pessoa(createPessoaEntity(UUID.randomUUID()))
-                .tipoProduto(createTipoProdutoEntity(UUID.randomUUID()))
+                .marca(MARCA)
+                .quantidadePacote(QUANTIDADE_PACOTE)
+                .dataEntrega(DATA_ENTREGA)
+                .tamanhoPacote(TAMANHO_PACOTE)
+                .pessoa(createPessoaEntity(PESSOA_ID))
+                .tipoProduto(createTipoProdutoEntity(TIPO_PRODUTO_ID))
                 .build();
     }
 
@@ -192,6 +199,21 @@ class ProdutoEstoqueServiceImplTest {
     }
 
     private TipoProduto createTipoProdutoEntity(UUID uuid) {
+        return TipoProduto.builder()
+                .uuid(uuid)
+                .nome("Café")
+                .build();
+    }
+
+    private Pessoa createPessoaDTO(UUID uuid) {
+        return Pessoa.builder()
+                .uuid(uuid)
+                .nome("Rafael")
+                .sobrenome("Gabriel")
+                .build();
+    }
+
+    private TipoProduto createTipoProdutoDTO(UUID uuid) {
         return TipoProduto.builder()
                 .uuid(uuid)
                 .nome("Café")

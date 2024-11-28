@@ -10,12 +10,10 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -51,7 +49,7 @@ public class JwtTokenProvider {
     }
 
     public TokenDTO createRefreshToken(String refreshToken) {
-        if (refreshToken.contains("Bearer ")){
+        if (refreshToken.contains("Bearer ")) {
             refreshToken = refreshToken.substring("Bearer ".length());
             refreshToken = refreshToken.substring(0, refreshToken.length() - 1);
             refreshToken = refreshToken.trim();
@@ -119,10 +117,7 @@ public class JwtTokenProvider {
     public boolean validateToken(String token) {
         DecodedJWT decodedJWT = decodeToken(token);
         try {
-            if (decodedJWT.getExpiresAt().before(new Date())) {
-                return false;
-            }
-            return true;
+            return !decodedJWT.getExpiresAt().before(new Date());
         } catch (Exception exception) {
             throw new RuntimeException("Expired or invalid JWT token!");
         }

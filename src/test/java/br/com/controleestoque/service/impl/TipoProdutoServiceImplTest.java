@@ -10,12 +10,20 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class TipoProdutoServiceImplTest {
+
+    private static final UUID TIPO_PRODUTO_ID = UUID.randomUUID();
+    private static final String NOME_PRODUTO = "Café";
 
     @Mock
     private TipoProdutoRepository tipoProdutoRepository;
@@ -30,43 +38,36 @@ class TipoProdutoServiceImplTest {
 
     @Test
     void testFindByIdSuccess() {
-        UUID tipoProdutoId = UUID.randomUUID();
-        TipoProduto tipoProdutoEntity = createTipoProdutoEntity(tipoProdutoId);
+        TipoProduto tipoProdutoEntity = createTipoProdutoEntity(TIPO_PRODUTO_ID);
 
-        when(tipoProdutoRepository.findById(tipoProdutoId)).thenReturn(Optional.of(tipoProdutoEntity));
+        when(tipoProdutoRepository.findById(TIPO_PRODUTO_ID)).thenReturn(Optional.of(tipoProdutoEntity));
 
-        TipoProdutoDTO result = tipoProdutoServiceImpl.findById(tipoProdutoId);
+        TipoProdutoDTO result = tipoProdutoServiceImpl.findById(TIPO_PRODUTO_ID);
 
         assertNotNull(result);
-        assertEquals(tipoProdutoEntity.getUuid(), result.getUuid());
-        assertEquals(tipoProdutoEntity.getNome(), result.getNome());
+        assertEquals(TIPO_PRODUTO_ID, result.getUuid());
+        assertEquals(NOME_PRODUTO, result.getNome());
     }
 
     @Test
     void testFindByIdNotFound() {
-        UUID tipoProdutoId = UUID.randomUUID();
-        when(tipoProdutoRepository.findById(tipoProdutoId)).thenReturn(Optional.empty());
+        when(tipoProdutoRepository.findById(TIPO_PRODUTO_ID)).thenReturn(Optional.empty());
 
-        assertThrows(TipoProdutoException.class, () -> tipoProdutoServiceImpl.findById(tipoProdutoId));
+        assertThrows(TipoProdutoException.class, () -> tipoProdutoServiceImpl.findById(TIPO_PRODUTO_ID));
     }
 
     @Test
     void testFindAllSuccess() {
-        List<TipoProduto> tipoProdutoList = new ArrayList<>();
-
-        UUID tipoProdutoId = UUID.randomUUID();
-        TipoProduto tipoProdutoEntity = createTipoProdutoEntity(tipoProdutoId);
-
-        tipoProdutoList.add(tipoProdutoEntity);
+        List<TipoProduto> tipoProdutoList = Collections.singletonList(createTipoProdutoEntity(TIPO_PRODUTO_ID));
 
         when(tipoProdutoRepository.findAll()).thenReturn(tipoProdutoList);
 
         List<TipoProdutoDTO> result = tipoProdutoServiceImpl.findAll();
 
         assertNotNull(result);
-        assertEquals(tipoProdutoList.get(0).getUuid(), result.get(0).getUuid());
-        assertEquals(tipoProdutoList.get(0).getNome(), result.get(0).getNome());
-        assertEquals(tipoProdutoList.size(), result.size());
+        assertEquals(1, result.size());
+        assertEquals(TIPO_PRODUTO_ID, result.get(0).getUuid());
+        assertEquals(NOME_PRODUTO, result.get(0).getNome());
     }
 
     @Test
@@ -81,76 +82,69 @@ class TipoProdutoServiceImplTest {
 
     @Test
     void testCreateSuccess() {
-        TipoProdutoDTO tipoProdutoDTO = createTipoProdutoDTO(UUID.randomUUID());
-        TipoProduto tipoProdutoEntity = createTipoProdutoEntity(tipoProdutoDTO.getUuid());
+        TipoProdutoDTO tipoProdutoDTO = createTipoProdutoDTO(TIPO_PRODUTO_ID);
+        TipoProduto tipoProdutoEntity = createTipoProdutoEntity(TIPO_PRODUTO_ID);
 
         when(tipoProdutoRepository.save(any(TipoProduto.class))).thenReturn(tipoProdutoEntity);
 
         TipoProdutoDTO result = tipoProdutoServiceImpl.create(tipoProdutoDTO);
 
         assertNotNull(result);
-        assertNotNull(result.getUuid());
-        assertEquals(tipoProdutoDTO.getNome(), result.getNome());
+        assertEquals(TIPO_PRODUTO_ID, result.getUuid());
+        assertEquals(NOME_PRODUTO, result.getNome());
     }
 
     @Test
-    public void testUpdateTipoProdutoSucces() {
-        UUID id = UUID.randomUUID();
+    void testUpdateTipoProdutoSuccess() {
+        TipoProdutoDTO tipoProdutoDTO = createTipoProdutoDTO(TIPO_PRODUTO_ID);
+        TipoProduto tipoProdutoEntity = createTipoProdutoEntity(TIPO_PRODUTO_ID);
 
-        TipoProdutoDTO tipoProdutoDTO = createTipoProdutoDTO(id);
-        TipoProduto tipoProdutoEntity = createTipoProdutoEntity(id);
+        when(tipoProdutoRepository.findById(TIPO_PRODUTO_ID)).thenReturn(Optional.of(tipoProdutoEntity));
 
-        when(tipoProdutoRepository.findById(tipoProdutoEntity.getUuid())).thenReturn(Optional.of(tipoProdutoEntity));
-        when(tipoProdutoRepository.save(any(TipoProduto.class))).thenReturn(tipoProdutoEntity);
+        tipoProdutoServiceImpl.update(TIPO_PRODUTO_ID, tipoProdutoDTO);
 
-        tipoProdutoServiceImpl.update(id, tipoProdutoDTO);
-
-        assertEquals(tipoProdutoDTO.getNome(), tipoProdutoEntity.getNome());
+        verify(tipoProdutoRepository).save(tipoProdutoEntity);
+        assertEquals(NOME_PRODUTO, tipoProdutoEntity.getNome());
     }
 
     @Test
     void testUpdateNotFound() {
-        UUID tipoProdutoId = UUID.randomUUID();
+        TipoProdutoDTO tipoProdutoDTO = createTipoProdutoDTO(TIPO_PRODUTO_ID);
 
-        TipoProdutoDTO tipoProdutoDTO = createTipoProdutoDTO(tipoProdutoId);
+        when(tipoProdutoRepository.findById(TIPO_PRODUTO_ID)).thenReturn(Optional.empty());
 
-        when(tipoProdutoRepository.findById(tipoProdutoId)).thenReturn(Optional.empty());
-
-        assertThrows(TipoProdutoException.class, () -> tipoProdutoServiceImpl.update(tipoProdutoId, tipoProdutoDTO));
+        assertThrows(TipoProdutoException.class, () -> tipoProdutoServiceImpl.update(TIPO_PRODUTO_ID, tipoProdutoDTO));
     }
 
     @Test
     void testDeleteSuccess() {
-        UUID tipoProdutoId = UUID.randomUUID();
-        TipoProdutoDTO tipoProdutoDTO = createTipoProdutoDTO(tipoProdutoId);
-        TipoProduto tipoProdutoEntity = createTipoProdutoEntity(tipoProdutoId);
+        TipoProduto tipoProdutoEntity = createTipoProdutoEntity(TIPO_PRODUTO_ID);
 
-        when(tipoProdutoRepository.findById(tipoProdutoEntity.getUuid())).thenReturn(Optional.of(tipoProdutoEntity));
+        when(tipoProdutoRepository.findById(TIPO_PRODUTO_ID)).thenReturn(Optional.of(tipoProdutoEntity));
 
-        tipoProdutoServiceImpl.delete(tipoProdutoDTO.getUuid());
+        tipoProdutoServiceImpl.delete(TIPO_PRODUTO_ID);
 
         verify(tipoProdutoRepository).delete(tipoProdutoEntity);
     }
 
     @Test
     void testDeleteNotFound() {
-        UUID tipoProdutoId = UUID.randomUUID();
-        when(tipoProdutoRepository.findById(tipoProdutoId)).thenReturn(Optional.empty());
+        when(tipoProdutoRepository.findById(TIPO_PRODUTO_ID)).thenReturn(Optional.empty());
 
-        assertThrows(TipoProdutoException.class, () -> tipoProdutoServiceImpl.delete(tipoProdutoId));
+        assertThrows(TipoProdutoException.class, () -> tipoProdutoServiceImpl.delete(TIPO_PRODUTO_ID));
     }
 
     private TipoProdutoDTO createTipoProdutoDTO(UUID uuid) {
         return TipoProdutoDTO.builder()
                 .uuid(uuid)
-                .nome("Café")
+                .nome(NOME_PRODUTO)
                 .build();
     }
 
     private TipoProduto createTipoProdutoEntity(UUID uuid) {
         return TipoProduto.builder()
                 .uuid(uuid)
-                .nome("Café")
+                .nome(NOME_PRODUTO)
                 .build();
     }
 }

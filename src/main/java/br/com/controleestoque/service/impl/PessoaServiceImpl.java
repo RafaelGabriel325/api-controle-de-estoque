@@ -21,63 +21,56 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 @Service
 @RequiredArgsConstructor
 public class PessoaServiceImpl implements PessoaService {
-    private final Logger LOGGER = LoggerFactory.getLogger(PessoaServiceImpl.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(PessoaServiceImpl.class);
     private final PessoaRepository pessoaRepository;
+    private static final PessoaMapper mapper = PessoaMapper.INSTANCE;
 
     @Override
     public PessoaDTO findById(UUID id) {
-        LOGGER.info("Finding a Pessoa by id");
-        Pessoa pessoaEntity = this.pessoaRepository
-                .findById(id)
-                .orElseThrow(() -> new PessoaException("Pessoa not found with ID: " + id));
-        PessoaDTO pessoaDTO = PessoaMapper.INSTANCE.entityToDto(pessoaEntity);
-        pessoaDTO.add(linkTo(methodOn(PessoaController.class).findById(id)).withSelfRel());
-        return pessoaDTO;
+        LOGGER.info("Finding Pessoa by ID: {}", id);
+        Pessoa pessoaEntity = findPessoaById(id);
+        return addHateoasLinks(mapper.entityToDto(pessoaEntity));
     }
 
     @Override
     public List<PessoaDTO> findAll() {
-        LOGGER.info("Finding all Pessoa");
-        List<PessoaDTO> pessoaDTOList = this.pessoaRepository
-                .findAll()
-                .stream()
-                .map(PessoaMapper.INSTANCE::entityToDto)
-                .toList();
-
-        pessoaDTOList.forEach(pessoa -> pessoa.add(linkTo(methodOn(PessoaController.class).findById(pessoa.getUuid())).withSelfRel()));
-
-        return pessoaDTOList;
+        LOGGER.info("Finding all Pessoas");
+        return pessoaRepository.findAll().stream().map(mapper::entityToDto).map(this::addHateoasLinks).toList();
     }
 
     @Override
     public PessoaDTO create(PessoaDTO pessoaDTO) {
-        LOGGER.info("Creating a Pessoa");
-        Pessoa pessoaEntity = PessoaMapper.INSTANCE.dtoToEntity(pessoaDTO);
-        this.pessoaRepository.save(pessoaEntity);
-        PessoaDTO createdPessoaDTO = PessoaMapper.INSTANCE.entityToDto(pessoaEntity);
-        createdPessoaDTO.add(linkTo(methodOn(PessoaController.class).findById(createdPessoaDTO.getUuid())).withSelfRel());
-        return createdPessoaDTO;
+        LOGGER.info("Creating a new Pessoa");
+        Pessoa pessoaEntity = mapper.dtoToEntity(pessoaDTO);
+        pessoaRepository.save(pessoaEntity);
+        return addHateoasLinks(mapper.entityToDto(pessoaEntity));
     }
 
     @Override
     public void update(UUID id, PessoaDTO pessoaDTO) {
-        LOGGER.info("Updating a Pessoa");
-        Pessoa pessoaEntity = this.pessoaRepository
-                .findById(id)
-                .orElseThrow(() -> new PessoaException("City not found with ID: " + id));
+        LOGGER.info("Updating Pessoa with ID: {}", id);
+        Pessoa pessoaEntity = findPessoaById(id);
         pessoaEntity.setNome(pessoaDTO.getNome());
         pessoaEntity.setSobrenome(pessoaDTO.getSobrenome());
-
-
         pessoaRepository.save(pessoaEntity);
     }
 
     @Override
     public void delete(UUID id) {
-        LOGGER.info("Deleting a Pessoa");
-        Pessoa pessoaEntity = this.pessoaRepository
-                .findById(id)
-                .orElseThrow(() -> new PessoaException("City not found with ID: " + id));
-        this.pessoaRepository.delete(pessoaEntity);
+        LOGGER.info("Deleting Pessoa with ID: {}", id);
+        Pessoa pessoaEntity = findPessoaById(id);
+        pessoaRepository.delete(pessoaEntity);
+    }
+
+    private Pessoa findPessoaById(UUID id) {
+        return pessoaRepository.findById(id).orElseThrow(() -> {
+            LOGGER.error("Pessoa not found with ID: {}", id);
+            return new PessoaException("Pessoa not found with ID: " + id);
+        });
+    }
+
+    private PessoaDTO addHateoasLinks(PessoaDTO pessoaDTO) {
+        pessoaDTO.add(linkTo(methodOn(PessoaController.class).findById(pessoaDTO.getUuid())).withSelfRel());
+        return pessoaDTO;
     }
 }

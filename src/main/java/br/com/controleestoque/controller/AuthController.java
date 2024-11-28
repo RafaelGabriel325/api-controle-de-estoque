@@ -15,16 +15,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.Serializable;
-
 import static br.com.controleestoque.shared.constant.PathsConstants.*;
 
 @RestController
 @RequestMapping(AUTH_BASE)
 @Tag(name = "Autenticação", description = "Endpoints para Gerenciar às Autenticação")
-public class AuthController implements Serializable {
-    private final Logger LOGGER = LoggerFactory.getLogger(AuthController.class);
+public class AuthController {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthController.class);
     private final AuthService authService;
+
+    private static final String INVALID_CLIENT_REQUEST = "Invalid client request! Check your parameters.";
+    private static final String INVALID_CREDENTIALS = "Invalid credentials. Unable to sign in.";
 
     public AuthController(AuthService authService) {
         this.authService = authService;
@@ -43,16 +45,16 @@ public class AuthController implements Serializable {
                     @ApiResponse(description = "Unauthorized", responseCode = "401", content = @Content),
             })
     public ResponseEntity<?> signIn(@RequestBody AccountCredentialsDTO accountCredentialsDTO) {
-        LOGGER.debug("Request sign in");
+        LOGGER.info("Request to sign in");
 
-        if (checkIfParamsAreInvalidForSignIn(accountCredentialsDTO)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid client request! Check your parameters.");
+        if (areSignInParamsInvalid(accountCredentialsDTO)) {
+            return ResponseEntity.badRequest().body(INVALID_CLIENT_REQUEST);
         }
 
         TokenDTO token = authService.signIn(accountCredentialsDTO);
 
         if (token == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials. Unable to sign in.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(INVALID_CREDENTIALS);
         }
 
         return ResponseEntity.ok(token);
@@ -72,26 +74,26 @@ public class AuthController implements Serializable {
     public ResponseEntity<?> refreshToken(@PathVariable("username") String username, @RequestHeader("Authorization") String refreshToken) {
         LOGGER.debug("Request refresh token");
 
-        if (checkIfParamsAreInvalidForRefreshToken(username, refreshToken)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid client request! Check your parameters.");
+        if (areRefreshTokenParamsInvalid(username, refreshToken)) {
+            return ResponseEntity.badRequest().body(INVALID_CLIENT_REQUEST);
         }
 
         TokenDTO token = authService.refreshToken(username, refreshToken);
 
         if (token == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials. Unable to sign in.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(INVALID_CREDENTIALS);
         }
 
         return ResponseEntity.ok(token);
     }
 
-    private boolean checkIfParamsAreInvalidForSignIn(AccountCredentialsDTO accountCredentialsDTO) {
+    private boolean areSignInParamsInvalid(AccountCredentialsDTO accountCredentialsDTO) {
         return accountCredentialsDTO == null ||
                 accountCredentialsDTO.getUsername() == null || accountCredentialsDTO.getUsername().isBlank() ||
                 accountCredentialsDTO.getPassword() == null || accountCredentialsDTO.getPassword().isBlank();
     }
 
-    private boolean checkIfParamsAreInvalidForRefreshToken(String username, String refreshToken) {
+    private boolean areRefreshTokenParamsInvalid(String username, String refreshToken) {
         return refreshToken == null || refreshToken.isBlank() || username == null || username.isBlank();
     }
 }

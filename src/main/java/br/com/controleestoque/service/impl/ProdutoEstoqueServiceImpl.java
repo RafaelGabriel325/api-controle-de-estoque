@@ -27,63 +27,49 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 @Service
 @RequiredArgsConstructor
 public class ProdutoEstoqueServiceImpl implements ProdutoEstoqueService {
-    private final Logger LOGGER = LoggerFactory.getLogger(ProdutoEstoqueServiceImpl.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProdutoEstoqueServiceImpl.class);
     private final ProdutoEstoqueRepository produtoEstoqueRepository;
     private final PessoaRepository pessoaRepository;
     private final TipoProdutoRepository tipoProdutoRepository;
+    private static final ProdutoEstoqueMapper mapper = ProdutoEstoqueMapper.INSTANCE;
 
     @Override
     public ProdutoEstoqueDTO findById(UUID id) {
-        LOGGER.info("Finding an Produto by id");
-        ProdutoEstoque produtoEstoqueEntity = this.produtoEstoqueRepository
-                .findById(id)
-                .orElseThrow(() -> new ProdutoEstoqueException("Produto not found with ID: " + id));
-        ProdutoEstoqueDTO produtoEstoqueDTO = ProdutoEstoqueMapper.INSTANCE.entityToDto(produtoEstoqueEntity);
-        produtoEstoqueDTO.add(linkTo(methodOn(ProdutoEstoqueController.class).findById(id)).withSelfRel());
-        return produtoEstoqueDTO;
+        LOGGER.info("Finding ProdutoEstoque by ID: {}", id);
+        ProdutoEstoque produtoEstoqueEntity = findProdutoEstoqueById(id);
+        return addHateoasLinks(mapper.entityToDto(produtoEstoqueEntity));
     }
 
     @Override
     public List<ProdutoEstoqueDTO> findAll() {
-        LOGGER.info("Finding all Produto");
-        List<ProdutoEstoqueDTO> prdutoDTOList = this.produtoEstoqueRepository.findAll().stream().map(ProdutoEstoqueMapper.INSTANCE::entityToDto).toList();
-        prdutoDTOList.forEach(produto -> produto.add(linkTo(methodOn(ProdutoEstoqueController.class).findById(produto.getUuid())).withSelfRel()));
-        return prdutoDTOList;
+        LOGGER.info("Finding all ProdutosEstoque");
+        return produtoEstoqueRepository.findAll().stream()
+                .map(mapper::entityToDto)
+                .map(this::addHateoasLinks)
+                .toList();
     }
 
     @Override
     public ProdutoEstoqueDTO create(ProdutoEstoqueDTO produtoEstoqueDTO) {
-        LOGGER.info("Creating an Produto");
-        ProdutoEstoque produtoEstoqueEntity = ProdutoEstoqueMapper.INSTANCE.dtoToEntity(produtoEstoqueDTO);
-        Pessoa pessoaEntity = this.pessoaRepository
-                .findById(produtoEstoqueDTO.getPessoa().getUuid())
-                .orElseThrow(() -> new PessoaException("Pessoa not found with ID: " + produtoEstoqueDTO.getPessoa().getUuid()));
-        TipoProduto tipoProdutoEntity = this.tipoProdutoRepository
-                .findById(produtoEstoqueDTO.getTipoProduto().getUuid())
-                .orElseThrow(() -> new TipoProdutoException("Pessoa not found with ID: " + produtoEstoqueDTO.getTipoProduto().getUuid()));
+        LOGGER.info("Creating a new ProdutoEstoque");
+        ProdutoEstoque produtoEstoqueEntity = mapper.dtoToEntity(produtoEstoqueDTO);
+        Pessoa pessoaEntity = findPessoaById(produtoEstoqueDTO.getPessoa().getUuid());
+        TipoProduto tipoProdutoEntity = findTipoProdutoById(produtoEstoqueDTO.getTipoProduto().getUuid());
         produtoEstoqueEntity.setPessoa(pessoaEntity);
         produtoEstoqueEntity.setTipoProduto(tipoProdutoEntity);
-        this.produtoEstoqueRepository.save(produtoEstoqueEntity);
-        ProdutoEstoqueDTO createdProdutoEstoqueDTO = ProdutoEstoqueMapper.INSTANCE.entityToDto(produtoEstoqueEntity);
-        createdProdutoEstoqueDTO.add(linkTo(methodOn(ProdutoEstoqueController.class).findById(createdProdutoEstoqueDTO.getUuid())).withSelfRel());
-        return createdProdutoEstoqueDTO;
+        produtoEstoqueRepository.save(produtoEstoqueEntity);
+        return addHateoasLinks(mapper.entityToDto(produtoEstoqueEntity));
     }
 
     @Override
     public void update(UUID id, ProdutoEstoqueDTO produtoEstoqueDTO) {
-        LOGGER.info("Updating a Produto");
-        ProdutoEstoque produtoEstoqueEntity = this.produtoEstoqueRepository
-                .findById(id)
-                .orElseThrow(() -> new ProdutoEstoqueException("Email not found with ID: " + id));
-        Pessoa pessoaEnity = this.pessoaRepository
-                .findById(produtoEstoqueDTO.getPessoa().getUuid())
-                .orElseThrow(() -> new PessoaException("Pessoa not found with ID: " + id));
-        TipoProduto tipoProdutoEnity = this.tipoProdutoRepository
-                .findById(produtoEstoqueDTO.getTipoProduto().getUuid())
-                .orElseThrow(() -> new TipoProdutoException("Tipo Produto not found with ID: " + id));
-        produtoEstoqueEntity.setTipoProduto(tipoProdutoEnity);
+        LOGGER.info("Updating ProdutoEstoque with ID: {}", id);
+        ProdutoEstoque produtoEstoqueEntity = findProdutoEstoqueById(id);
+        Pessoa pessoaEntity = findPessoaById(produtoEstoqueDTO.getPessoa().getUuid());
+        TipoProduto tipoProdutoEntity = findTipoProdutoById(produtoEstoqueDTO.getTipoProduto().getUuid());
+        produtoEstoqueEntity.setPessoa(pessoaEntity);
+        produtoEstoqueEntity.setTipoProduto(tipoProdutoEntity);
         produtoEstoqueEntity.setMarca(produtoEstoqueDTO.getMarca());
-        produtoEstoqueEntity.setPessoa(pessoaEnity);
         produtoEstoqueEntity.setQuantidadePacote(produtoEstoqueDTO.getQuantidadePacote());
         produtoEstoqueEntity.setTamanhoPacote(produtoEstoqueDTO.getTamanhoPacote());
         produtoEstoqueEntity.setDataEntrega(produtoEstoqueDTO.getDataEntrega());
@@ -92,10 +78,37 @@ public class ProdutoEstoqueServiceImpl implements ProdutoEstoqueService {
 
     @Override
     public void delete(UUID id) {
-        LOGGER.info("Deleting a Produto");
-        ProdutoEstoque produtoEstoqueEntity = this.produtoEstoqueRepository
-                .findById(id)
-                .orElseThrow(() -> new ProdutoEstoqueException("Email not found with ID: " + id));
-        this.produtoEstoqueRepository.delete(produtoEstoqueEntity);
+        LOGGER.info("Deleting ProdutoEstoque with ID: {}", id);
+        ProdutoEstoque produtoEstoqueEntity = findProdutoEstoqueById(id);
+        produtoEstoqueRepository.delete(produtoEstoqueEntity);
+    }
+
+    private ProdutoEstoque findProdutoEstoqueById(UUID id) {
+        return produtoEstoqueRepository.findById(id)
+                .orElseThrow(() -> {
+                    LOGGER.error("ProdutoEstoque not found with ID: {}", id);
+                    return new ProdutoEstoqueException("Produto not found with ID: " + id);
+                });
+    }
+
+    private Pessoa findPessoaById(UUID id) {
+        return pessoaRepository.findById(id)
+                .orElseThrow(() -> {
+                    LOGGER.error("Pessoa not found with ID: {}", id);
+                    return new PessoaException("Pessoa not found with ID: " + id);
+                });
+    }
+
+    private TipoProduto findTipoProdutoById(UUID id) {
+        return tipoProdutoRepository.findById(id)
+                .orElseThrow(() -> {
+                    LOGGER.error("TipoProduto not found with ID: {}", id);
+                    return new TipoProdutoException("TipoProduto not found with ID: " + id);
+                });
+    }
+
+    private ProdutoEstoqueDTO addHateoasLinks(ProdutoEstoqueDTO produtoEstoqueDTO) {
+        produtoEstoqueDTO.add(linkTo(methodOn(ProdutoEstoqueController.class).findById(produtoEstoqueDTO.getUuid())).withSelfRel());
+        return produtoEstoqueDTO;
     }
 }

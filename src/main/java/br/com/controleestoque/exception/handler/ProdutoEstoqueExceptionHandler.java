@@ -1,7 +1,7 @@
 package br.com.controleestoque.exception.handler;
 
-import br.com.controleestoque.exception.ProdutoEstoqueException;
 import br.com.controleestoque.exception.ErrorResponse;
+import br.com.controleestoque.exception.ProdutoEstoqueException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;

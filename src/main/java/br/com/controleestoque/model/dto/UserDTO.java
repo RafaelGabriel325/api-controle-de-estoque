@@ -8,11 +8,11 @@ import org.springframework.hateoas.RepresentationModel;
 import java.util.List;
 import java.util.UUID;
 
-@Data
+@Setter
+@Getter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@EqualsAndHashCode
 public class UserDTO extends RepresentationModel<UserDTO> {
     private UUID uuid;
     @NotBlank
@@ -38,4 +38,5 @@ public class UserDTO extends RepresentationModel<UserDTO> {
     private Boolean enable;
     @NotBlank
     private List<PermissionDTO> permissions;
+
 }

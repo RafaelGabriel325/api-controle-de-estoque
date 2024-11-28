@@ -42,7 +42,7 @@ public class User implements UserDetails, Serializable {
     @JoinTable(
             name = "tab_user_permission",
             joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "permission_id") )
+            inverseJoinColumns = @JoinColumn(name = "permission_id"))
     private List<Permission> permissions;
 
     @Override

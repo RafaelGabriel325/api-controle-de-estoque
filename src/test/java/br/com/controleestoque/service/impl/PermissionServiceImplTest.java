@@ -10,7 +10,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -18,6 +21,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class PermissionServiceImplTest {
+
+    private static final UUID PERMISSION_ID = UUID.randomUUID();
+    private static final String DESCRIPTION = "Admin";
 
     @Mock
     private PermissionRepository permissionRepository;
@@ -32,43 +38,36 @@ class PermissionServiceImplTest {
 
     @Test
     void testFindByIdSuccess() {
-        UUID permissionId = UUID.randomUUID();
-        Permission permissionEntity = createPermissionEntity(permissionId);
+        Permission permissionEntity = createPermissionEntity(PERMISSION_ID);
 
-        when(permissionRepository.findById(permissionEntity.getUuid())).thenReturn(Optional.of(permissionEntity));
+        when(permissionRepository.findById(PERMISSION_ID)).thenReturn(Optional.of(permissionEntity));
 
-        PermissionDTO result = permissionServiceImpl.findById(permissionId);
+        PermissionDTO result = permissionServiceImpl.findById(PERMISSION_ID);
 
         assertNotNull(result);
-        assertEquals(permissionEntity.getUuid(), result.getUuid());
-        assertEquals(permissionEntity.getDescription(), result.getDescription());
+        assertEquals(PERMISSION_ID, result.getUuid());
+        assertEquals(DESCRIPTION, result.getDescription());
     }
 
     @Test
     void testFindByIdNotFound() {
-        UUID permissionId = UUID.randomUUID();
-        when(permissionRepository.findById(permissionId)).thenReturn(Optional.empty());
+        when(permissionRepository.findById(PERMISSION_ID)).thenReturn(Optional.empty());
 
-        assertThrows(PermissionException.class, () -> permissionServiceImpl.findById(permissionId));
+        assertThrows(PermissionException.class, () -> permissionServiceImpl.findById(PERMISSION_ID));
     }
 
     @Test
     void testFindAllSuccess() {
-        List<Permission> permissionList = new ArrayList<>();
-
-        UUID permissionId = UUID.randomUUID();
-        Permission permissionEntity = createPermissionEntity(permissionId);
-
-        permissionList.add(permissionEntity);
+        List<Permission> permissionList = Collections.singletonList(createPermissionEntity(PERMISSION_ID));
 
         when(permissionRepository.findAll()).thenReturn(permissionList);
 
         List<PermissionDTO> result = permissionServiceImpl.findAll();
 
         assertNotNull(result);
-        assertEquals(permissionList.get(0).getUuid(), result.get(0).getUuid());
-        assertEquals(permissionList.get(0).getDescription(), result.get(0).getDescription());
-        assertEquals(permissionList.size(), result.size());
+        assertEquals(1, result.size());
+        assertEquals(PERMISSION_ID, result.get(0).getUuid());
+        assertEquals(DESCRIPTION, result.get(0).getDescription());
     }
 
     @Test
@@ -83,8 +82,8 @@ class PermissionServiceImplTest {
 
     @Test
     void testCreateSuccess() {
-        PermissionDTO permissionDTO = createPermissionDTO(UUID.randomUUID());
-        Permission permissionEntity = createPermissionEntity(permissionDTO.getUuid());
+        PermissionDTO permissionDTO = createPermissionDTO(PERMISSION_ID);
+        Permission permissionEntity = createPermissionEntity(PERMISSION_ID);
 
         when(permissionRepository.save(any(Permission.class))).thenReturn(permissionEntity);
 
@@ -92,67 +91,60 @@ class PermissionServiceImplTest {
 
         assertNotNull(result);
         assertNotNull(result.getUuid());
-        assertEquals(permissionDTO.getDescription(), result.getDescription());
+        assertEquals(DESCRIPTION, result.getDescription());
     }
 
     @Test
-    public void testUpdatePessoaSucces() {
-        UUID id = UUID.randomUUID();
+    void testUpdateSuccess() {
+        PermissionDTO permissionDTO = createPermissionDTO(PERMISSION_ID);
+        Permission permissionEntity = createPermissionEntity(PERMISSION_ID);
 
-        PermissionDTO permissionDTO = createPermissionDTO(id);
-        Permission permissionEntity = createPermissionEntity(id);
-
-        when(permissionRepository.findById(permissionEntity.getUuid())).thenReturn(Optional.of(permissionEntity));
+        when(permissionRepository.findById(PERMISSION_ID)).thenReturn(Optional.of(permissionEntity));
         when(permissionRepository.save(any(Permission.class))).thenReturn(permissionEntity);
 
-        permissionServiceImpl.update(id, permissionDTO);
+        permissionServiceImpl.update(PERMISSION_ID, permissionDTO);
 
-        assertEquals(permissionDTO.getDescription(), permissionEntity.getDescription());
+        assertEquals(DESCRIPTION, permissionEntity.getDescription());
     }
 
     @Test
     void testUpdateNotFound() {
-        UUID permissionId = UUID.randomUUID();
+        PermissionDTO permissionDTO = createPermissionDTO(PERMISSION_ID);
 
-        PermissionDTO permissionDTO = createPermissionDTO(permissionId);
+        when(permissionRepository.findById(PERMISSION_ID)).thenReturn(Optional.empty());
 
-        when(permissionRepository.findById(permissionId)).thenReturn(Optional.empty());
-
-        assertThrows(PermissionException.class, () -> permissionServiceImpl.update(permissionId, permissionDTO));
+        assertThrows(PermissionException.class, () -> permissionServiceImpl.update(PERMISSION_ID, permissionDTO));
     }
 
     @Test
     void testDeleteSuccess() {
-        UUID permissionId = UUID.randomUUID();
-        PermissionDTO permissionDTO = createPermissionDTO(permissionId);
-        Permission permissionEntity = createPermissionEntity(permissionId);
+        Permission permissionEntity = createPermissionEntity(PERMISSION_ID);
 
-        when(permissionRepository.findById(permissionEntity.getUuid())).thenReturn(Optional.of(permissionEntity));
+        when(permissionRepository.findById(PERMISSION_ID)).thenReturn(Optional.of(permissionEntity));
 
-        permissionServiceImpl.delete(permissionDTO.getUuid());
+        permissionServiceImpl.delete(PERMISSION_ID);
 
         verify(permissionRepository).delete(permissionEntity);
     }
 
     @Test
     void testDeleteNotFound() {
-        UUID permissionId = UUID.randomUUID();
-        when(permissionRepository.findById(permissionId)).thenReturn(Optional.empty());
+        when(permissionRepository.findById(PERMISSION_ID)).thenReturn(Optional.empty());
 
-        assertThrows(PermissionException.class, () -> permissionServiceImpl.delete(permissionId));
+        assertThrows(PermissionException.class, () -> permissionServiceImpl.delete(PERMISSION_ID));
     }
 
     private PermissionDTO createPermissionDTO(UUID uuid) {
         return PermissionDTO.builder()
                 .uuid(uuid)
-                .description("Admin")
+                .description(DESCRIPTION)
                 .build();
     }
 
     private Permission createPermissionEntity(UUID uuid) {
         return Permission.builder()
                 .uuid(uuid)
-                .description("Admin")
+                .description(DESCRIPTION)
                 .build();
     }
 }

@@ -21,55 +21,60 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 @Service
 @RequiredArgsConstructor
 public class PermissionServiceImpl implements PermissionService {
-    private final Logger LOGGER = LoggerFactory.getLogger(PermissionServiceImpl.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(PermissionServiceImpl.class);
     private final PermissionRepository permissionRepository;
+    private static final PermissionMapper mapper = PermissionMapper.INSTANCE;
 
     @Override
     public PermissionDTO findById(UUID id) {
-        LOGGER.info("Finding a Permission by id");
-        Permission permissionEntity = this.permissionRepository
-                .findById(id)
-                .orElseThrow(() -> new PermissionException("Permission not found with ID: " + id));
-        PermissionDTO permissionDTO = PermissionMapper.INSTANCE.entityToDto(permissionEntity);
-        permissionDTO.add(linkTo(methodOn(PermissionController.class).findById(id)).withSelfRel());
-        return permissionDTO;
+        LOGGER.info("Finding Permission by ID: {}", id);
+        Permission permissionEntity = findPermissionById(id);
+        return addHateoasLinks(mapper.entityToDto(permissionEntity));
     }
 
     @Override
     public List<PermissionDTO> findAll() {
-        LOGGER.info("Finding all Permission");
-        List<PermissionDTO> permissionDTOList = this.permissionRepository.findAll().stream().map(PermissionMapper.INSTANCE::entityToDto).toList();
-        permissionDTOList.forEach(permission -> permission.add(linkTo(methodOn(PermissionController.class).findById(permission.getUuid())).
-                withSelfRel()));
-        return permissionDTOList;
+        LOGGER.info("Finding all Permissions");
+        return permissionRepository.findAll()
+                .stream()
+                .map(mapper::entityToDto)
+                .map(this::addHateoasLinks)
+                .toList();
     }
 
     @Override
     public PermissionDTO create(PermissionDTO permissionDTO) {
-        LOGGER.info("Creating a Permission");
-        Permission permissionEntity = PermissionMapper.INSTANCE.dtoToEntity(permissionDTO);
-        this.permissionRepository.save(permissionEntity);
-        PermissionDTO createdPermissionDTO = PermissionMapper.INSTANCE.entityToDto(permissionEntity);
-        createdPermissionDTO.add(linkTo(methodOn(PermissionController.class).findById(createdPermissionDTO.getUuid())).withSelfRel());
-        return createdPermissionDTO;
+        LOGGER.info("Creating a new Permission");
+        Permission permissionEntity = mapper.dtoToEntity(permissionDTO);
+        permissionRepository.save(permissionEntity);
+        return addHateoasLinks(mapper.entityToDto(permissionEntity));
     }
 
     @Override
     public void update(UUID id, PermissionDTO permissionDTO) {
-        LOGGER.info("Updating a Permission");
-        Permission permissionEntity = this.permissionRepository
-                .findById(id)
-                .orElseThrow(() -> new PermissionException("Permission not found with ID: " + id));
+        LOGGER.info("Updating Permission with ID: {}", id);
+        Permission permissionEntity = findPermissionById(id);
         permissionEntity.setDescription(permissionDTO.getDescription());
         permissionRepository.save(permissionEntity);
     }
 
     @Override
     public void delete(UUID id) {
-        LOGGER.info("Deleting a Permission");
-        Permission permissionEntity = this.permissionRepository
-                .findById(id)
-                .orElseThrow(() -> new PermissionException("Permission not found with ID: " + id));
-        this.permissionRepository.delete(permissionEntity);
+        LOGGER.info("Deleting Permission with ID: {}", id);
+        Permission permissionEntity = findPermissionById(id);
+        permissionRepository.delete(permissionEntity);
+    }
+
+    private Permission findPermissionById(UUID id) {
+        return permissionRepository.findById(id)
+                .orElseThrow(() -> {
+                    LOGGER.error("Permission not found with ID: {}", id);
+                    return new PermissionException("Permission not found with ID: " + id);
+                });
+    }
+
+    private PermissionDTO addHateoasLinks(PermissionDTO permissionDTO) {
+        permissionDTO.add(linkTo(methodOn(PermissionController.class).findById(permissionDTO.getUuid())).withSelfRel());
+        return permissionDTO;
     }
 }

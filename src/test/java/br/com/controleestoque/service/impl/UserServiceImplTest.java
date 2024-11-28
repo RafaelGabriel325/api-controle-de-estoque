@@ -1,5 +1,6 @@
 package br.com.controleestoque.service.impl;
 
+import br.com.controleestoque.exception.UserException;
 import br.com.controleestoque.model.dto.PermissionDTO;
 import br.com.controleestoque.model.dto.UserDTO;
 import br.com.controleestoque.model.entity.Permission;
@@ -21,6 +22,12 @@ import static org.mockito.Mockito.*;
 
 class UserServiceImplTest {
 
+    private static final UUID USER_ID = UUID.randomUUID();
+    private static final String USERNAME = "rafal325";
+    private static final String FULL_NAME = "Rafael Gabriel";
+    private static final String PASSWORD = "rafael123";
+    private static final String ENCODED_PASSWORD = "encodedPassword";
+
     @Mock
     private UserRepository userRepository;
 
@@ -37,66 +44,58 @@ class UserServiceImplTest {
 
     @Test
     void testLoadUserByUsernameSuccess() {
-        User userEntity = createUserEntity(UUID.randomUUID());
+        User userEntity = createUserEntity(USER_ID);
 
-        when(userRepository.findByUsername(userEntity.getUsername())).thenReturn(userEntity);
+        when(userRepository.findByUsername(USERNAME)).thenReturn(userEntity);
 
-        UserDetails userDetails = userServiceImpl.loadUserByUsername(userEntity.getUsername());
+        UserDetails userDetails = userServiceImpl.loadUserByUsername(USERNAME);
 
         assertNotNull(userDetails);
-        assertEquals(userEntity.getUsername(), userDetails.getUsername());
+        assertEquals(USERNAME, userDetails.getUsername());
     }
 
     @Test
     void testLoadUserByUsernameNotFound() {
-        String username = "nonExistingUser";
+        when(userRepository.findByUsername(USERNAME)).thenReturn(null);
 
-        when(userRepository.findByUsername(username)).thenReturn(null);
-
-        assertThrows(UsernameNotFoundException.class, () -> userServiceImpl.loadUserByUsername(username));
+        assertThrows(UsernameNotFoundException.class, () -> userServiceImpl.loadUserByUsername(USERNAME));
     }
 
     @Test
     void testFindByIdSuccess() {
-        UUID userId = UUID.randomUUID();
-        User userEntity = createUserEntity(userId);
+        User userEntity = createUserEntity(USER_ID);
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(userEntity));
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(userEntity));
 
-        UserDTO result = userServiceImpl.findById(userId);
+        UserDTO result = userServiceImpl.findById(USER_ID);
 
         assertNotNull(result);
-        assertEquals(userEntity.getUuid(), result.getUuid());
-        assertEquals(userEntity.getUsername(), result.getUsername());
-        assertEquals(userEntity.getFullName(), result.getFullName());
+        assertEquals(USER_ID, result.getUuid());
+        assertEquals(USERNAME, result.getUsername());
+        assertEquals(FULL_NAME, result.getFullName());
     }
 
     @Test
     void testFindByIdNotFound() {
-        UUID userId = UUID.randomUUID();
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () -> userServiceImpl.findById(userId));
+        assertThrows(UserException.class, () -> userServiceImpl.findById(USER_ID));
     }
 
     @Test
     void testFindAllSuccess() {
-        List<User> userList = new ArrayList<>();
-
-        UUID userId = UUID.randomUUID();
-        User userEntity = createUserEntity(userId);
-
-        userList.add(userEntity);
+        User userEntity = createUserEntity(USER_ID);
+        List<User> userList = Collections.singletonList(userEntity);
 
         when(userRepository.findAll()).thenReturn(userList);
 
         List<UserDTO> result = userServiceImpl.findAll();
 
         assertNotNull(result);
-        assertEquals(userList.get(0).getUuid(), result.get(0).getUuid());
-        assertEquals(userList.get(0).getUsername(), result.get(0).getUsername());
-        assertEquals(userList.get(0).getFullName(), result.get(0).getFullName());
-        assertEquals(userList.size(), result.size());
+        assertEquals(1, result.size());
+        assertEquals(USER_ID, result.get(0).getUuid());
+        assertEquals(USERNAME, result.get(0).getUsername());
+        assertEquals(FULL_NAME, result.get(0).getFullName());
     }
 
     @Test
@@ -111,72 +110,68 @@ class UserServiceImplTest {
 
     @Test
     void testCreateSuccess() {
-        UserDTO userDTO = createUserDTO(UUID.randomUUID());
-        User userEntity = createUserEntity(userDTO.getUuid());
+        UserDTO userDTO = createUserDTO(USER_ID);
+        User userEntity = createUserEntity(USER_ID);
 
-        when(passwordEncoder.encode(userDTO.getPassword())).thenReturn("encodedPassword");
+        when(passwordEncoder.encode(PASSWORD)).thenReturn(ENCODED_PASSWORD);
         when(userRepository.save(any(User.class))).thenReturn(userEntity);
 
         UserDTO result = userServiceImpl.create(userDTO);
 
         assertNotNull(result);
-        assertNotNull(result.getUuid());
-        assertEquals(userDTO.getUsername(), result.getUsername());
+        assertEquals(USER_ID, result.getUuid());
+        assertEquals(USERNAME, result.getUsername());
     }
 
     @Test
     void testUpdateSuccess() {
-        UUID userId = UUID.randomUUID();
-        UserDTO userDTO = createUserDTO(userId);
-        User userEntity = createUserEntity(userId);
+        UserDTO userDTO = createUserDTO(USER_ID);
+        User userEntity = createUserEntity(USER_ID);
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(userEntity));
-        when(passwordEncoder.encode(userDTO.getPassword())).thenReturn("encodedPassword");
-        when(userRepository.save(any(User.class))).thenReturn(userEntity);
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(userEntity));
+        when(passwordEncoder.encode(PASSWORD)).thenReturn(ENCODED_PASSWORD);
 
-        userServiceImpl.update(userId, userDTO);
+        userServiceImpl.update(USER_ID, userDTO);
 
-        assertEquals(userDTO.getUsername(), userEntity.getUsername());
-        assertEquals(userDTO.getFullName(), userEntity.getFullName());
+        verify(userRepository).save(userEntity);
+        assertEquals(USERNAME, userEntity.getUsername());
+        assertEquals(FULL_NAME, userEntity.getFullName());
     }
 
     @Test
     void testUpdateNotFound() {
-        UUID userId = UUID.randomUUID();
-        UserDTO userDTO = createUserDTO(userId);
+        UserDTO userDTO = createUserDTO(USER_ID);
 
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () -> userServiceImpl.update(userId, userDTO));
+        assertThrows(UserException.class, () -> userServiceImpl.update(USER_ID, userDTO));
     }
 
     @Test
     void testDeleteSuccess() {
-        UUID userId = UUID.randomUUID();
-        User userEntity = createUserEntity(userId);
+        User userEntity = createUserEntity(USER_ID);
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(userEntity));
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(userEntity));
 
-        userServiceImpl.delete(userId);
+        userServiceImpl.delete(USER_ID);
 
         verify(userRepository).delete(userEntity);
     }
 
     @Test
     void testDeleteNotFound() {
-        UUID userId = UUID.randomUUID();
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () -> userServiceImpl.delete(userId));
+        assertThrows(UserException.class, () -> userServiceImpl.delete(USER_ID));
     }
 
     private UserDTO createUserDTO(UUID uuid) {
         List<PermissionDTO> permissionDTOList = createPermissionDTOList();
         return UserDTO.builder()
                 .uuid(uuid)
-                .username("rafal325")
-                .fullName("Rafael Gabriel")
-                .password("rafael123")
+                .username(USERNAME)
+                .fullName(FULL_NAME)
+                .password(PASSWORD)
                 .accountNonExpired(true)
                 .accountNonLocked(true)
                 .credentialsNonExpired(true)
@@ -189,9 +184,9 @@ class UserServiceImplTest {
         List<Permission> permissionList = createPermissionList();
         return User.builder()
                 .uuid(uuid)
-                .username("rafal325")
-                .fullName("Rafael Gabriel")
-                .password("rafael123")
+                .username(USERNAME)
+                .fullName(FULL_NAME)
+                .password(PASSWORD)
                 .accountNonExpired(true)
                 .accountNonLocked(true)
                 .credentialsNonExpired(true)
