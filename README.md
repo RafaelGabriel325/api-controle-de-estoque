@@ -57,4 +57,4 @@ Contém classes utilitárias e funções auxiliares.
 Inicialização dos Dockerfile.
 
 ## Tests
-Contém os testes unitários do projeto.
+Contém os testes unitários e integração do projeto
