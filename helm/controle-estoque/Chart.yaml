@@ -1,0 +1,16 @@
+apiVersion: v2
+name: controle-estoque
+version: 0.1.0
+appVersion: "0.1.0"
+description: Helm chart para a aplicação Controle de Estoque com job de migrations e integração GitOps
+keywords:
+  - spring-boot
+  - postgres
+  - flyway
+  - argocd
+  - gitops
+home: https://github.com/RafaelGabriel325/api-controle-de-estoque
+maintainers:
+  - name: Seu Nome
+    email: voce@example.com
+type: application

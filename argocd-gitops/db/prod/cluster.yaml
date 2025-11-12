@@ -1,0 +1,18 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: ce-pg
+  namespace: prod
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  instances: 2
+  storage:
+    size: 20Gi
+  bootstrap:
+    initdb:
+      database: controleestoque
+      owner: postgres
+  monitoring:
+    enablePodMonitor: false
+  enableSuperuserAccess: true

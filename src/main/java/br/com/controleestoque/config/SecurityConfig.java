@@ -31,13 +31,13 @@ public class SecurityConfig {
                 .authorizeHttpRequests(
                         authorizeHttpRequests -> authorizeHttpRequests
                                 .requestMatchers("/**").permitAll()
-//                                .requestMatchers("/api/auth/sign-in","/api/auth/refresh-token/**","/swagger-ui/**","/v3/api-docs/**").permitAll()
-//                                .requestMatchers("/api/**","/swagger-ui/**","/v3/api-docs/**").hasAuthority("ADMIN")
-//                                .requestMatchers("/api/pessoa", "/api/pessoa/{id}",
-//                                        "/api/produto", "/api/produto/{id}",
-//                                        "/api/tipo-produto", "/api/tipo-produto/{id}",
-//                                        "/swagger-ui/**","/v3/api-docs/**").authenticated()
-//                                .requestMatchers("/api/auth/permission/delete","/api/auth/user/delete").denyAll()
+                                .requestMatchers("/api/auth/sign-in","/api/auth/refresh-token/**","/swagger-ui/**","/v3/api-docs/**").permitAll()
+                                .requestMatchers("/api/**","/swagger-ui/**","/v3/api-docs/**").hasAuthority("ADMIN")
+                                .requestMatchers("/api/pessoa", "/api/pessoa/{id}",
+                                        "/api/produto", "/api/produto/{id}",
+                                        "/api/tipo-produto", "/api/tipo-produto/{id}",
+                                        "/swagger-ui/**","/v3/api-docs/**").authenticated()
+                                .requestMatchers("/api/auth/permission/delete","/api/auth/user/delete").denyAll()
                 )
                 .cors(Customizer.withDefaults())
                 .apply(new JwtConfigurer(jwtTokenProvider));

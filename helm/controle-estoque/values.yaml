@@ -1,0 +1,61 @@
+# Valores padrão (podem ser sobrescritos por values-dev.yaml e values-prod.yaml)
+image:
+  repository: ghcr.io/RafaelGabriel325/api-controle-de-estoque
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: controle-estoque.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: null
+
+env: {}
+
+postgres:
+  host: postgres-rw.default.svc.cluster.local
+  port: 5432
+  database: controleestoque
+  username: postgres
+  password: root
+  # Caso deseje sobrepor a URL completa (ignora host/port/database)
+  jdbcUrl: ""
+
+migrations:
+  enabled: true
+  backoffLimit: 1
+  annotations: {}
+
+podAnnotations: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

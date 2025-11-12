@@ -1,0 +1,41 @@
+image:
+  repository: ghcr.io/RafaelGabriel325/api-controle-de-estoque
+  # Tag será atualizada automaticamente pelo CI
+  tag: "0.1.0"
+
+replicaCount: 2
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+
+resources:
+  limits:
+    cpu: 750m
+    memory: 768Mi
+  requests:
+    cpu: 300m
+    memory: 384Mi
+
+env:
+  SPRING_PROFILES_ACTIVE: prod
+
+postgres:
+  host: ce-pg-rw.prod.svc.cluster.local
+  port: 5432
+  database: controleestoque
+  username: postgres
+  password: supersecret
+  jdbcUrl: ""
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: estoque.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []

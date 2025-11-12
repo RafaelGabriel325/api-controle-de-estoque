@@ -1,0 +1,23 @@
+{
+  "name": "controle-de-estoque-dev",
+  "image": "mcr.microsoft.com/devcontainers/java:1-19-bullseye",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "java.configuration.runtimes": [
+          { "name": "JavaSE-19", "path": "/usr/lib/jvm/msopenjdk-19" }
+        ]
+      },
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "richardwillis.vscode-spotless",
+        "shengchen.vscode-checkstyle",
+        "mhutchie.git-graph",
+        "eamodio.gitlens"
+      ]
+    }
+  },
+  "forwardPorts": [8080, 5432],
+  "postCreateCommand": "mvn -q -DskipTests package",
+  "remoteUser": "vscode"
+}

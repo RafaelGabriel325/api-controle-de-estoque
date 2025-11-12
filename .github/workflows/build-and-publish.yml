@@ -1,0 +1,82 @@
+name: Build and Publish Docker image
+
+on:
+  push:
+    branches: ["main", "master"]
+    paths:
+      - "src/**"
+      - "pom.xml"
+      - "docker-config/app/Dockerfile"
+      - ".github/workflows/build-and-publish.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    if: |
+      !contains(github.event.head_commit.message, '[skip ci]') &&
+      github.actor != 'github-actions'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '19'
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,format=short,prefix=sha-
+            type=ref,event=branch
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker-config/app/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Choose tag for Helm values
+        id: tag
+        run: |
+          # prefer short sha tag
+          TAG=$(echo "${{ steps.meta.outputs.tags }}" | tr ' ' '\n' | grep 'sha-' | head -n1)
+          TAG=${TAG##*:}
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Update Helm image tag in values-dev and values-prod
+        run: |
+          echo "Using image tag: ${{ steps.tag.outputs.tag }}"
+          sed -i "s/^\(\s*tag:\s*\).*/\1\"${{ steps.tag.outputs.tag }}\"/" helm/controle-estoque/values-dev.yaml
+          sed -i "s/^\(\s*tag:\s*\).*/\1\"${{ steps.tag.outputs.tag }}\"/" helm/controle-estoque/values-prod.yaml
+
+      - name: Commit Helm changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add helm/controle-estoque/values-dev.yaml helm/controle-estoque/values-prod.yaml
+          git commit -m "chore(helm): bump image tag to ${{ steps.tag.outputs.tag }} [skip ci]" || echo "No changes to commit"
+          git push

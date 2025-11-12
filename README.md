@@ -4,14 +4,77 @@
 Aplicação back-end em Spring Boot com banco de dados PostgreSQL, rodando em Docker. Esta aplicação permite a comunicação cliente-servidor através da criação de APIs, onde o cliente é a aplicação web e o servidor armazena o banco de dados com as informações do sistema.
 
 ## Requisitos
-- Docker instalado no computador.
+- Docker e Docker Compose instalados no computador.
+- (Opcional) VS Code com a extensão Dev Containers para desenvolvimento em contêiner.
 
 ## Como Rodar a Aplicação
-1. Entre no terminal (CMD) na pasta do projeto.
-2. Execute o comando:
+1. Copie o arquivo `.env` de exemplo (já presente) e ajuste as variáveis se necessário:
+   - `APP_PORT=8080`
+   - `POSTGRES_PORT=5432`
+   - `POSTGRES_DB=controleestoque`
+   - `POSTGRES_USER=root`
+   - `POSTGRES_PASSWORD=root`
+2. No terminal (CMD/PowerShell) na pasta do projeto, execute:
    ```bash
-   docker-compose up
+   docker compose up --build
+   ```
+3. A API estará disponível em `http://localhost:8080` e o banco em `localhost:5432`.
 
+### Swagger / OpenAPI
+- A documentação interativa está disponível em: `http://localhost:8080/swagger-ui.html`
+- Documento OpenAPI (JSON): `http://localhost:8080/v3/api-docs`
+- Os endpoints documentados usam o prefixo `/api/**`.
+
+### Exemplos de Requisições (cURL)
+1) Autenticação (obter token JWT):
+```bash
+curl -X POST "http://localhost:8080/api/auth/sign-in" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin"}'
+```
+Resposta esperada (exemplo):
+```json
+{
+  "authenticated": true,
+  "created": "2025-01-01T00:00:00Z",
+  "expiration": "2025-01-01T01:00:00Z",
+  "accessToken": "<JWT>",
+  "refreshToken": "<JWT_REFRESH>"
+}
+```
+2) Usando o token para acessar um endpoint protegido (ex.: listar pessoas):
+```bash
+ACCESS_TOKEN="<cole o token aqui>"
+curl -X GET "http://localhost:8080/api/pessoa/" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}"
+```
+3) Criar uma pessoa (exemplo):
+```bash
+ACCESS_TOKEN="<cole o token aqui>"
+curl -X POST "http://localhost:8080/api/pessoa/create" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "nome": "Fulano de Tal",
+        "cpf": "12345678901",
+        "email": "fulano@example.com"
+      }'
+```
+
+## Docker e Imagens
+- Dockerfile multi-stage implementado para a aplicação (`docker-config/app/Dockerfile`):
+  - Stage de build (Maven + JDK 19) gera o `.jar`.
+  - Stage de runtime usa somente JRE 19 para reduzir o tamanho da imagem.
+- A imagem do banco usa diretamente `postgres:17-alpine` via `docker-compose.yml` (não é necessário um Dockerfile próprio só para expor porta).
+
+## Dev Container (opcional)
+- Foi adicionado `.devcontainer/devcontainer.json` com Java 19 + Maven.
+- Para usar no VS Code: abrir a pasta do projeto e selecionar "Reopen in Container".
+- Portas encaminhadas: 8080 (API) e 5432 (Postgres).
+
+## Observações
+- A aplicação lê as configurações de banco via variáveis do ambiente definidas no `docker-compose.yml` (por exemplo `SPRING_DATASOURCE_URL`), apontando para o serviço `postgres-service`.
+- O arquivo `docker-config/db/Dockerfile` tornou-se opcional e não é mais referenciado pelo Compose atual.
 
 # Tecnologias Utilizadas
 ## Spring Boot: Framework para a criação do back-end e APIs RESTful.
@@ -58,3 +121,107 @@ Inicialização dos Dockerfile.
 
 ## Tests
 Contém os testes unitários do projeto.
+
+
+---
+
+## Kubernetes, Helm e GitOps (Argo CD)
+
+Este projeto está pronto para ser implantado em Kubernetes usando Helm e GitOps com Argo CD.
+
+### 1) Helm Chart
+- Caminho: `helm/controle-estoque`
+- Arquivos:
+  - `Chart.yaml`
+  - `values.yaml` (padrão)
+  - `values-dev.yaml` e `values-prod.yaml`
+  - `templates/` (Deployment, Service, Secret, Ingress opcional e Job de migrations)
+
+O Job de migrations é executado antes do Deployment usando Argo CD Sync Waves e Hooks. As credenciais do banco estão nos `values-*.yaml` e são materializadas como `Secret` pelo Helm (apenas para fins didáticos desta etapa).
+
+Variáveis de ambiente adicionais podem ser definidas em `values*.yaml` na chave `env:` e serão injetadas no Pod.
+
+### 2) Modo de execução de migrations
+A aplicação foi adaptada para suportar a variável `RUN_MIGRATIONS_ONLY=true`. Quando presente, ela inicia o contexto Spring, executa o Flyway e finaliza. O Job de migrations do Helm usa este modo automaticamente.
+
+### 3) Build e publicação da imagem Docker (GHCR)
+- Workflow: `.github/workflows/build-and-publish.yml`
+- A imagem é publicada em `ghcr.io/<USUARIO>/<REPO>`.
+- A tag preferencial é baseada no short SHA (`sha-<commit>`).
+- O workflow, ao publicar uma nova imagem, atualiza as tags de imagem nos arquivos `values-dev.yaml` e `values-prod.yaml` e faz commit com `[skip ci]` para evitar loop.
+
+Pré‑requisitos:
+- Habilitar o GitHub Packages (GHCR) no repositório/organização.
+- O `GITHUB_TOKEN` padrão já possui permissão `packages: write` via `permissions` no workflow.
+
+### 4) Argo CD e GitOps
+Este repositório contém uma estrutura de exemplo de um repositório GitOps em `argocd-gitops/` para facilitar a avaliação (na prática, crie outro repositório dedicado):
+- `argocd-gitops/root-application.yaml`: App raiz (App of Apps) apontando para a pasta `apps`.
+- `argocd-gitops/apps/operator-cloudnativepg.yaml`: instala o operador CloudNativePG (PostgreSQL) via Helm.
+- `argocd-gitops/apps/db-dev.yaml` e `argocd-gitops/db/dev/cluster.yaml`: cluster Postgres para `dev`.
+- `argocd-gitops/apps/db-prod.yaml` e `argocd-gitops/db/prod/cluster.yaml`: cluster Postgres para `prod`.
+- `argocd-gitops/apps/app-dev.yaml` e `argocd-gitops/apps/app-prod.yaml`: aplicações apontando para este chart, carregando os respectivos `values-*.yaml`.
+
+As anotações `argocd.argoproj.io/sync-wave` garantem a ordem: operador -> DB -> migrations -> aplicação.
+
+### 5) Ajustes necessários
+- Substitua `SEU_USUARIO` pelo seu usuário/organização GitHub em:
+  - `helm/controle-estoque/values*.yaml`
+  - `helm/controle-estoque/Chart.yaml` (campo `home`)
+  - `argocd-gitops/**/*.yaml` (URLs de repo)
+- Ajuste o host do Ingress em `values-prod.yaml`.
+
+### 6) Comandos úteis
+- Gerar e publicar imagem (via workflow) ao dar push em `main/master` ou manualmente via `workflow_dispatch`.
+- Instalar em um cluster (exemplo ambiente dev) diretamente com Helm:
+  ```bash
+  # Namespace dev
+  kubectl create ns dev || true
+  helm upgrade --install ce-dev helm/controle-estoque -n dev -f helm/controle-estoque/values-dev.yaml
+  ```
+- Via Argo CD (recomendado): aplique o app raiz e acompanhe a sincronização:
+  ```bash
+  kubectl apply -n argocd -f argocd-gitops/root-application.yaml
+  # Ou crie cada Application em argocd-gitops/apps/... conforme necessidade
+  ```
+
+### 7) Observações de segurança
+- Não é recomendado manter credenciais em `values*.yaml` em produção. Use Secrets gerenciados (ex.: External Secrets, SOPS) e/ou gerenciadores (Vault, AWS Secrets Manager, etc.).
+- Limite o acesso ao repositório GitOps e evite commits de segredos.
+
+### 8) Operador de Banco (CloudNativePG)
+- A instalação do operador é feita via Helm pelo Argo CD.
+- Os serviços gerados pelo operador expõem endpoints `*-rw` (leitura/escrita). Os `values*.yaml` já apontam por padrão para `postgres-rw.<namespace>.svc.cluster.local` (ajuste conforme o nome real do cluster gerado, neste exemplo `ce-pg`).
+
+
+
+## Variáveis de ambiente (.env)
+Este projeto usa arquivos `.env` para configurar facilmente a aplicação localmente com Docker Compose.
+
+Arquivos fornecidos:
+- `.env` (padrão para dev) — já preenchido com valores locais comuns
+- `.env.dev` — alternativa pronta para desenvolvimento
+- `.env.example` — modelo com placeholders para você copiar e personalizar
+
+Chaves disponíveis:
+- APP_PORT: Porta exposta da API (padrão 8080)
+- SPRING_PROFILES_ACTIVE: Perfil Spring (ex.: dev, prod)
+- POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD: parâmetros do Postgres
+- JWT_SECRET: segredo do JWT para assinar tokens (use um valor forte em produção)
+- JWT_EXPIRE_MS: tempo de expiração do JWT em milissegundos (padrão 3600000 = 1h)
+- CORS_ORIGINS: lista de origens permitidas separadas por vírgula
+
+Como usar com Docker Compose:
+- Usando o `.env` padrão (na raiz):
+  ```bash
+  docker compose --env-file .env up --build
+  ```
+- Usando o `.env.dev`:
+  ```bash
+  docker compose --env-file .env.dev up --build
+  ```
+
+Observações técnicas:
+- O `docker-compose.yml` injeta variáveis para o container da API, incluindo `SPRING_DATASOURCE_*`, `JWT_SECRET`, `CORS_ORIGINS` e `SPRING_PROFILES_ACTIVE`.
+- O `application.yml` foi ajustado para ler as variáveis de ambiente e possui valores default seguros para desenvolvimento.
+- Em Kubernetes/Helm as variáveis são gerenciadas via `values*.yaml` e `Secret`; os arquivos `.env` são apenas para ambiente local com Docker Compose.
