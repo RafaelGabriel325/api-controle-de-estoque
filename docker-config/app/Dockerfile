@@ -1,6 +1,6 @@
 # Multi-stage build for smaller, production-ready image
 # 1) Build stage
-FROM maven:3.9.6-eclipse-temurin-19 AS builder
+FROM maven:3.8.7-eclipse-temurin-19 AS builder
 WORKDIR /workspace
 
 # Copy only pom first to leverage Docker layer caching for dependencies
